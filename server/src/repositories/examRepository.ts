@@ -27,11 +27,32 @@ export interface ExamWithQuestions {
 }
 
 export class ExamRepository {
-  async getAll(): Promise<any[]> {
-    return db.select().from(exams).all();
+  async findAll(): Promise<ExamWithQuestions[]> {
+    const allExams = db.select().from(exams).all();
+    const results: ExamWithQuestions[] = [];
+
+    for (const exam of allExams) {
+      const linkedQuestions = db
+        .select({
+          id: questions.id,
+          statement: questions.statement,
+        })
+        .from(examQuestions)
+        .innerJoin(questions, eq(examQuestions.questionId, questions.id))
+        .where(eq(examQuestions.examId, exam.id))
+        .orderBy(asc(examQuestions.position))
+        .all();
+
+      results.push({
+        ...exam,
+        questions: linkedQuestions,
+      });
+    }
+
+    return results;
   }
 
-  async getById(id: string): Promise<ExamWithQuestions> {
+  async findById(id: string): Promise<ExamWithQuestions> {
     const exam = db.select().from(exams).where(eq(exams.id, id)).get();
     if (!exam) {
       throw new NotFoundError(`Exam with ID ${id} not found`);
@@ -41,7 +62,6 @@ export class ExamRepository {
       .select({
         id: questions.id,
         statement: questions.statement,
-        position: examQuestions.position,
       })
       .from(examQuestions)
       .innerJoin(questions, eq(examQuestions.questionId, questions.id))
@@ -56,6 +76,9 @@ export class ExamRepository {
   }
 
   async create(data: CreateExamDTO): Promise<string> {
+    if (!data.title || !data.subject || !data.professor || !data.date) {
+      throw new ValidationError('All exam fields are required');
+    }
     if (!data.questionIds || data.questionIds.length === 0) {
       throw new ValidationError('An exam must have at least one question');
     }

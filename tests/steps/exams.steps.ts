@@ -97,10 +97,18 @@ When('I update that exam to have:', async (dataTable) => {
     return q ? q.id : 'non-existent-id';
   });
 
+  // Get current exam to preserve fields required by validation
+  const currentRes = await request(app).get(`/api/exams/${lastCreatedExamId}`);
+  const currentExam = currentRes.body;
+
   const res = await request(app)
     .put(`/api/exams/${lastCreatedExamId}`)
     .send({
+      title: currentExam.title,
       subject: data.subject,
+      professor: currentExam.professor,
+      date: currentExam.date,
+      identificationMode: currentExam.identificationMode,
       questionIds: questionIds
     });
   setLastResponse(res);

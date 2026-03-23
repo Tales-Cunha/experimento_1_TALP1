@@ -5,7 +5,7 @@ export interface AlternativeData {
 }
 
 export interface QuestionData {
-  id: string;
+  id?: string;
   statement: string;
   alternatives: AlternativeData[];
   createdAt?: string;

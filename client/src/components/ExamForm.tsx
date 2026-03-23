@@ -149,9 +149,9 @@ const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel }) => {
         <div className="question-selector">
           {allQuestions.map(q => (
             <div 
-              key={q.id} 
-              className={`question-item ${formData.questionIds?.includes(q.id) ? 'selected' : ''}`}
-              onClick={() => handleToggleQuestion(q.id)}
+              key={q.id!} 
+              className={`question-item ${formData.questionIds?.includes(q.id!) ? 'selected' : ''}`}
+              onClick={() => handleToggleQuestion(q.id!)}
             >
               <span className="checkbox"></span>
               <span className="statement">{q.statement}</span>

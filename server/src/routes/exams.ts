@@ -1,33 +1,45 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { ExamRepository } from '../repositories/examRepository';
+import { ValidationError } from '../errors';
 
 const router = Router();
 const examRepository = new ExamRepository();
 
-// Get all exams
+const validateExamData = (body: any) => {
+  const { title, subject, professor, date, questionIds } = body;
+  if (!title || !subject || !professor || !date) {
+    throw new ValidationError('title, subject, professor, and date are required and cannot be empty');
+  }
+  if (!questionIds || !Array.isArray(questionIds) || questionIds.length === 0) {
+    throw new ValidationError('At least one questionId is required');
+  }
+};
+
+// GET / -> findAll()
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const exams = await examRepository.getAll();
+    const exams = await examRepository.findAll();
     res.json(exams);
   } catch (error) {
     next(error);
   }
 });
 
-// Get exam by ID
+// GET /:id -> findById(id)
 router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const exam = await examRepository.getById(id as string);
+    const exam = await examRepository.findById(id as string);
     res.json(exam);
   } catch (error) {
     next(error);
   }
 });
 
-// Create exam
+// POST / -> create()
 router.post('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
+    validateExamData(req.body);
     const id = await examRepository.create(req.body);
     res.status(201).json({ id });
   } catch (error) {
@@ -35,9 +47,10 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
   }
 });
 
-// Update exam
+// PUT /:id -> update()
 router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
+    validateExamData(req.body);
     const { id } = req.params;
     await examRepository.update(id as string, req.body);
     res.json({ message: 'Exam updated successfully' });
@@ -46,7 +59,7 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
   }
 });
 
-// Delete exam
+// DELETE /:id -> delete()
 router.delete('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;

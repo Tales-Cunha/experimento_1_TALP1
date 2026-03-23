@@ -64,50 +64,71 @@ const QuestionForm: React.FC<QuestionFormProps> = ({ initialData, onSubmit, onCa
 
   return (
     <form onSubmit={handleSubmit} className="question-form">
-      {validationError && <div className="error-message" style={{ color: 'red', marginBottom: '10px' }}>{validationError}</div>}
+      {validationError && (
+        <div className="error-banner">
+          {validationError}
+        </div>
+      )}
       
-      <div className="form-group">
-        <label htmlFor="statement">Statement:</label>
+      <div style={{ marginBottom: '1.5rem' }}>
+        <label htmlFor="statement" style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem' }}>
+          Statement
+        </label>
         <textarea
           id="statement"
+          placeholder="Enter the question statement here..."
           value={statement}
           onChange={(e) => setStatement(e.target.value)}
           required
-          style={{ width: '100%', minHeight: '100px' }}
+          rows={4}
         />
       </div>
 
       <div className="alternatives-section">
-        <h3>Alternatives</h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <h3 style={{ margin: 0 }}>Alternatives</h3>
+          <button type="button" onClick={handleAddAlternative} className="primary-btn" style={{ padding: '0.4rem 0.8rem', fontSize: '0.9rem' }}>
+            + Add Option
+          </button>
+        </div>
+        
         {alternatives.map((alt, index) => (
-          <div key={index} className="alternative-item" style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '10px' }}>
-            <input
-              type="text"
-              placeholder={`Alternative ${index + 1}`}
-              value={alt.description}
-              onChange={(e) => handleAlternativeChange(index, 'description', e.target.value)}
-              required
-              style={{ flex: 1 }}
-            />
-            <label>
+          <div key={index} className="alternative-item" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <div style={{ flex: 1 }}>
+              <input
+                type="text"
+                placeholder={`Option ${index + 1}`}
+                value={alt.description}
+                onChange={(e) => handleAlternativeChange(index, 'description', e.target.value)}
+                required
+              />
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
               <input
                 type="checkbox"
                 checked={alt.isCorrect}
                 onChange={(e) => handleAlternativeChange(index, 'isCorrect', e.target.checked)}
+                style={{ width: 'auto', margin: 0 }}
               />
-              Correct
+              <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>Correct</span>
             </label>
             {alternatives.length > 2 && (
-              <button type="button" onClick={() => handleRemoveAlternative(index)}>Remove</button>
+              <button 
+                type="button" 
+                onClick={() => handleRemoveAlternative(index)}
+                style={{ color: 'var(--error-color)', padding: '0.4rem', border: 'none', background: 'transparent' }}
+                title="Remove"
+              >
+                ✕
+              </button>
             )}
           </div>
         ))}
-        <button type="button" onClick={handleAddAlternative}>Add Alternative</button>
       </div>
 
-      <div className="form-actions" style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
-        <button type="submit">Save Question</button>
-        <button type="button" onClick={onCancel}>Cancel</button>
+      <div className="form-actions" style={{ marginTop: '2.5rem', display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+        <button type="button" onClick={onCancel}>discard changes</button>
+        <button type="submit" className="primary-btn">publish question</button>
       </div>
     </form>
   );

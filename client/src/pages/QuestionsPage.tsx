@@ -70,21 +70,22 @@ const QuestionsPage: React.FC = () => {
     }
   };
 
-  if (isLoading) return <div>Loading questions...</div>;
+  if (isLoading) return <div className="container">Loading questions...</div>;
 
   return (
-    <div className="questions-page" style={{ padding: '20px' }}>
-      <h1>Questions Management</h1>
-      
-      {!isCreating && !editingQuestion && (
-        <button onClick={() => setIsCreating(true)} style={{ marginBottom: '20px' }}>
-          Add New Question
-        </button>
-      )}
+    <div className="questions-page">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '2rem' }}>
+        <h1>Questions Repository</h1>
+        {!isCreating && !editingQuestion && (
+          <button className="primary-btn" onClick={() => setIsCreating(true)}>
+            + Add New Question
+          </button>
+        )}
+      </div>
 
       {(isCreating || editingQuestion) && (
-        <div style={{ padding: '20px', border: '1px solid #ccc', borderRadius: '8px', marginBottom: '20px' }}>
-          <h2>{isCreating ? 'Create New Question' : 'Edit Question'}</h2>
+        <div className="card" style={{ marginBottom: '3rem', borderTop: '4px solid var(--accent-color)' }}>
+          <h2>{isCreating ? 'Draft New Question' : 'Refine Question'}</h2>
           <QuestionForm
             initialData={editingQuestion || undefined}
             onSubmit={isCreating ? handleCreate : handleUpdate}
@@ -99,29 +100,31 @@ const QuestionsPage: React.FC = () => {
       )}
 
       <div className="questions-list">
-        <h2>All Questions</h2>
+        <h2>Active Inventory</h2>
         {questions.length === 0 ? (
-          <p>No questions found. Add one above.</p>
+          <p style={{ opacity: 0.6 }}>No questions found. Add one above to get started.</p>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: '#f4f4f4' }}>
-                <th style={{ textAlign: 'left', padding: '10px', borderBottom: '1px solid #ddd' }}>Statement</th>
-                <th style={{ textAlign: 'center', padding: '10px', borderBottom: '1px solid #ddd', width: '150px' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {questions.map((q) => (
-                <tr key={q.id}>
-                  <td style={{ padding: '10px', borderBottom: '1px solid #ddd' }}>{q.statement}</td>
-                  <td style={{ padding: '10px', borderBottom: '1px solid #ddd', textAlign: 'center' }}>
-                    <button onClick={() => setEditingQuestion(q)} style={{ marginRight: '5px' }}>Edit</button>
-                    <button onClick={() => handleDelete(q.id!, q.statement)} style={{ color: 'red' }}>Delete</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          questions.map((q) => (
+            <div key={q.id} className="card question-item">
+              <div className="question-content">
+                <p style={{ fontSize: '1.1rem', fontWeight: 500 }}>{q.statement}</p>
+                <div style={{ display: 'flex', gap: '8px', marginTop: '8px', opacity: 0.6, fontSize: '0.85rem' }}>
+                  <span>{q.alternatives.length} alternatives</span>
+                  <span>•</span>
+                  <span>{q.alternatives.filter(a => a.isCorrect).length} correct</span>
+                </div>
+              </div>
+              <div className="question-actions">
+                <button onClick={() => setEditingQuestion(q)}>Edit</button>
+                <button 
+                  onClick={() => handleDelete(q.id!, q.statement)} 
+                  style={{ color: 'var(--error-color)', borderColor: 'rgba(239, 68, 68, 0.2)' }}
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))
         )}
       </div>
     </div>

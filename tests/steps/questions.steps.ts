@@ -9,11 +9,16 @@ import { eq } from 'drizzle-orm';
 let lastResponse: any;
 let lastCreatedId: string;
 
+function getSharedLastResponse() {
+  return (global as any).lastResponse || lastResponse;
+}
+
 Before(async () => {
   // Use DB instance directly to reset tables
   (db.run as any)(`DELETE FROM exam_questions`);
   (db.run as any)(`DELETE FROM alternatives`);
   (db.run as any)(`DELETE FROM questions`);
+  (global as any).lastResponse = undefined;
 });
 
 Given('a clean database state', async () => {
@@ -34,14 +39,17 @@ When('I create a question with the following details:', async (dataTable) => {
       alternatives: alts
     });
   
+  (global as any).lastResponse = lastResponse;
+  
   if (lastResponse.status === 201) {
     lastCreatedId = lastResponse.body.id;
   }
 });
 
 Then('the question should be successfully created', () => {
-  expect(lastResponse.status).to.equal(201);
-  expect(lastResponse.body).to.have.property('id');
+  const response = getSharedLastResponse();
+  expect(response.status).to.equal(201);
+  expect(response.body).to.have.property('id');
 });
 
 Then('I should be able to retrieve the question with its {int} alternatives', async (count: number) => {
@@ -76,19 +84,23 @@ When('I update that question to have:', async (dataTable) => {
       statement: data.statement,
       alternatives: alts
     });
+  (global as any).lastResponse = lastResponse;
 });
 
 Then('the question should reflect the new statement', () => {
-  expect(lastResponse.body.statement).to.equal('New Statement');
+  const response = getSharedLastResponse();
+  expect(response.body.statement).to.equal('New Statement');
 });
 
 Then('the old alternatives should be replaced by the new ones', () => {
-  expect(lastResponse.body.alternatives).to.have.lengthOf(2);
-  expect(lastResponse.body.alternatives[0].description).to.equal('Alt 1');
+  const response = getSharedLastResponse();
+  expect(response.body.alternatives).to.have.lengthOf(2);
+  expect(response.body.alternatives[0].description).to.equal('Alt 1');
 });
 
 When('I delete that question', async () => {
   lastResponse = await request(app).delete(`/api/questions/${lastCreatedId}`);
+  (global as any).lastResponse = lastResponse;
 });
 
 Then('the question should no longer exist in the system', async () => {
@@ -112,12 +124,14 @@ Given('the following questions exist:', async (dataTable) => {
 
 When('I list all questions', async () => {
   lastResponse = await request(app).get('/api/questions');
+  (global as any).lastResponse = lastResponse;
 });
 
 Then('I should receive a list containing {string} and {string}', (q1: string, q2: string) => {
-  const statements = lastResponse.body.map((q: any) => q.statement);
-  expect(statements).to.include(q1);
-  expect(statements).to.include(q2);
+  const response = getSharedLastResponse();
+  const names = response.body.map((item: any) => item.statement || item.title);
+  expect(names).to.include(q1);
+  expect(names).to.include(q2);
 });
 
 When('I attempt to create a question with fewer than {int} alternatives', async (count: number) => {
@@ -127,10 +141,12 @@ When('I attempt to create a question with fewer than {int} alternatives', async 
       statement: 'Invalid',
       alternatives: [{ description: 'Only one', isCorrect: true }]
     });
+  (global as any).lastResponse = lastResponse;
 });
 
 Then('I should receive a {int} Unprocessable Entity error', (code: number) => {
-  expect(lastResponse.status).to.equal(code);
+  const response = getSharedLastResponse();
+  expect(response.status).to.equal(code);
 });
 
 When('I attempt to create a question where no alternative is marked as correct', async () => {
@@ -143,12 +159,16 @@ When('I attempt to create a question where no alternative is marked as correct',
         { description: 'B', isCorrect: false }
       ]
     });
+  (global as any).lastResponse = lastResponse;
 });
 
 When('I attempt to retrieve a question with a non-existent ID', async () => {
   lastResponse = await request(app).get('/api/questions/non-existent-uuid');
+  (global as any).lastResponse = lastResponse;
 });
 
 Then('I should receive a {int} Not Found error', (code: number) => {
-  expect(lastResponse.status).to.equal(code);
+  const response = getSharedLastResponse();
+  expect(response.status).to.equal(code);
 });
+

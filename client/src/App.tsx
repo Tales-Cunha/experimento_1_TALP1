@@ -1,6 +1,8 @@
 import { BrowserRouter as Router, Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import './App.css'
+import './Exams.css'
 import QuestionsPage from './pages/QuestionsPage';
+import ExamsPage from './pages/ExamsPage';
 import { ThemeProvider, useTheme } from './components/ThemeProvider';
 
 const Navigation = () => {
@@ -11,6 +13,9 @@ const Navigation = () => {
       <div className="nav-links">
         <NavLink to="/questions" className={({ isActive }) => isActive ? 'active' : ''}>
           Questions
+        </NavLink>
+        <NavLink to="/exams" className={({ isActive }) => isActive ? 'active' : ''}>
+          Exams
         </NavLink>
       </div>
       <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle Theme">
@@ -29,6 +34,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Navigate to="/questions" replace />} />
             <Route path="/questions" element={<QuestionsPage />} />
+            <Route path="/exams" element={<ExamsPage />} />
           </Routes>
         </main>
       </Router>
@@ -37,3 +43,4 @@ function App() {
 }
 
 export default App
+

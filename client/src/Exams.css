@@ -143,3 +143,122 @@
   font-size: 0.8rem;
   color: var(--text-secondary);
 }
+
+.exam-view-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.exam-view-modal {
+  background: var(--bg-color);
+  width: 90%;
+  max-width: 800px;
+  max-height: 90vh;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+  overflow: hidden;
+}
+
+.exam-view-content {
+  padding: 40px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.exam-header-display {
+  border-bottom: 2px solid var(--text-color);
+  padding-bottom: 20px;
+  margin-bottom: 30px;
+}
+
+.exam-header-display h1 {
+  text-align: center;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.exam-meta-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  font-weight: 600;
+}
+
+.question-display {
+  margin-bottom: 40px;
+  page-break-inside: avoid;
+}
+
+.question-statement {
+  font-weight: 600;
+  margin-bottom: 15px;
+  display: flex;
+  gap: 15px;
+  font-size: 1.1rem;
+}
+
+.alternatives-display {
+  margin-left: 30px;
+}
+
+.alt-line {
+  margin-bottom: 10px;
+}
+
+.alt-id {
+  font-weight: 600;
+  margin-right: 15px;
+  display: inline-block;
+  min-width: 30px;
+}
+
+.student-answer-area {
+  margin-top: 25px;
+  padding: 15px;
+  border-top: 1px dotted var(--border-color);
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.student-answer-area p {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 0;
+}
+
+.answer-box {
+  border: 2px solid var(--text-color);
+  height: 45px;
+  width: 120px;
+  background: white;
+}
+
+.modal-footer {
+  padding: 20px 40px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn-icon.danger {
+  color: var(--error-color);
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+.btn-icon.danger:hover {
+  background: rgba(239, 68, 68, 0.05);
+  border-color: var(--error-color);
+}

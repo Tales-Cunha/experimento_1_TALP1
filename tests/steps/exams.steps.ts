@@ -2,6 +2,9 @@ import { Given, When, Then, Before } from '@cucumber/cucumber';
 import request from 'supertest';
 import { expect } from 'chai';
 import app from '../../server/src/app';
+import { db } from '../../server/src/db/db';
+import { exams, questions, examQuestions } from '../../server/src/db/schema';
+import { eq, inArray } from 'drizzle-orm';
 
 let lastResponse: any;
 let lastCreatedExamId: string;
@@ -11,22 +14,23 @@ function setLastResponse(res: any) {
   (global as any).lastResponse = res;
 }
 
+// Helper to get question IDs by statements
+async function getQuestionIdsByStatements(statements: string[]): Promise<string[]> {
+  const result = await db.select({ id: questions.id })
+    .from(questions)
+    .where(inArray(questions.statement, statements));
+  return result.map(r => r.id);
+}
+
 Given('a clean exams state', async () => {
-  await request(app).delete('/api/exams/test/clear');
+    (db.run as any)(`DELETE FROM exam_questions`);
+    (db.run as any)(`DELETE FROM exams`);
 });
 
 When('I create an exam with the following details:', async (dataTable) => {
   const data = dataTable.rowsHash();
-  
-  // Resolve question IDs by statement
-  const questionsRes = await request(app).get('/api/questions');
-  const allQuestions = questionsRes.body;
-  
-  const questionNames = data.questions.split(', ');
-  const questionIds = questionNames.map((name: string) => {
-    const q = allQuestions.find((allQ: any) => allQ.statement === name);
-    return q ? q.id : 'non-existent-id';
-  });
+  const statements = data.questions.split(', ').map((s: string) => s.trim());
+  const questionIds = await getQuestionIdsByStatements(statements);
 
   const res = await request(app)
     .post('/api/exams')
@@ -62,14 +66,8 @@ Then('the exam identification mode should be {string}', async (mode: string) => 
 });
 
 Given('an exam exists with the title {string} and questions {string}', async (title: string, questionsStr: string) => {
-  const questionsRes = await request(app).get('/api/questions');
-  const allQuestions = questionsRes.body;
-  
-  const questionNames = questionsStr.split(', ');
-  const questionIds = questionNames.map((name: string) => {
-    const q = allQuestions.find((allQ: any) => allQ.statement === name);
-    return q ? q.id : 'non-existent-id';
-  });
+  const statements = questionsStr.split(', ').map(s => s.trim());
+  const questionIds = await getQuestionIdsByStatements(statements);
 
   const res = await request(app)
     .post('/api/exams')
@@ -87,15 +85,8 @@ Given('an exam exists with the title {string} and questions {string}', async (ti
 
 When('I update that exam to have:', async (dataTable) => {
   const data = dataTable.rowsHash();
-  
-  const questionsRes = await request(app).get('/api/questions');
-  const allQuestions = questionsRes.body;
-  
-  const questionNames = data.questions.split(', ');
-  const questionIds = questionNames.map((name: string) => {
-    const q = allQuestions.find((allQ: any) => allQ.statement === name);
-    return q ? q.id : 'non-existent-id';
-  });
+  const statements = data.questions.split(', ').map((s: string) => s.trim());
+  const questionIds = await getQuestionIdsByStatements(statements);
 
   // Get current exam to preserve fields required by validation
   const currentRes = await request(app).get(`/api/exams/${lastCreatedExamId}`);
@@ -128,8 +119,8 @@ Then('the exam should contain {string} instead of {string}', async (included: st
 
 Given('an exam exists with the title {string}', async (title: string) => {
   // Need at least one question to create exam
-  const questionsRes = await request(app).get('/api/questions');
-  const qId = questionsRes.body[0].id;
+  const qList = await db.select({ id: questions.id }).from(questions).limit(1);
+  const qId = qList[0].id;
 
   const res = await request(app)
     .post('/api/exams')
@@ -155,8 +146,8 @@ Then('the exam should no longer exist in the system', async () => {
 });
 
 Given('the following exams exist:', async (dataTable) => {
-  const questionsRes = await request(app).get('/api/questions');
-  const qId = questionsRes.body[0].id;
+  const qList = await db.select({ id: questions.id }).from(questions).limit(1);
+  const qId = qList[0].id;
 
   for (const row of dataTable.hashes()) {
     await request(app)

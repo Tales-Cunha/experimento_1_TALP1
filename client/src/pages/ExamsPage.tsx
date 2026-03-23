@@ -3,10 +3,88 @@ import axios from 'axios';
 import type { ExamData } from '../types';
 import ExamForm from '../components/ExamForm';
 
+const ExamView: React.FC<{ examId: string; onDismiss: () => void }> = ({ examId, onDismiss }) => {
+  const [exam, setExam] = useState<ExamData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchExamDetails = async () => {
+      try {
+        const res = await axios.get(`http://localhost:3001/api/exams/${examId}`);
+        setExam(res.data);
+      } catch (err) {
+        console.error('Failed to fetch exam details', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchExamDetails();
+  }, [examId]);
+
+  if (loading) return <div className="exam-view-overlay"><div className="exam-view-modal" style={{padding: '40px'}}>Loading...</div></div>;
+  if (!exam) return null;
+
+  const getAltId = (index: number) => {
+    if (exam.identificationMode === 'letters') {
+      return String.fromCharCode(65 + index) + ')';
+    }
+    return Math.pow(2, index).toString();
+  };
+
+  return (
+    <div className="exam-view-overlay" onClick={onDismiss}>
+      <div className="exam-view-modal" onClick={e => e.stopPropagation()}>
+        <div className="exam-view-content">
+          <div className="exam-header-display">
+            <h1>{exam.title}</h1>
+            <div className="exam-meta-grid">
+              <span>Subject: {exam.subject}</span>
+              <span>Date: {exam.date}</span>
+              <span>Professor: {exam.professor}</span>
+              <span>ID Mode: {exam.identificationMode}</span>
+            </div>
+          </div>
+
+          <div className="questions-display">
+            {exam.questions?.map((q, qIdx) => (
+              <div key={q.id} className="question-display">
+                <div className="question-statement">
+                  <span>{qIdx + 1}.</span>
+                  <span>{q.statement}</span>
+                </div>
+                <div className="alternatives-display">
+                  {q.alternatives.map((alt, aIdx) => (
+                    <div key={alt.id} className="alt-line">
+                      <span className="alt-id">{getAltId(aIdx)}</span>
+                      <span>{alt.description}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="student-answer-area">
+                  <p>
+                    {exam.identificationMode === 'letters' 
+                      ? 'Indicate selected letters:' 
+                      : 'Sum of marked alternatives:'}
+                  </p>
+                  <div className="answer-box"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-secondary" onClick={onDismiss}>Close Preview</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const ExamsPage: React.FC = () => {
   const [exams, setExams] = useState<ExamData[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [editingExamId, setEditingExamId] = useState<string | null>(null);
+  const [viewingExamId, setViewingExamId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -16,7 +94,7 @@ const ExamsPage: React.FC = () => {
   const fetchExams = async () => {
     setLoading(true);
     try {
-      const res = await axios.get('http://localhost:3000/api/exams');
+      const res = await axios.get('http://localhost:3001/api/exams');
       setExams(res.data);
     } catch (err) {
       console.error('Failed to fetch exams', err);
@@ -33,7 +111,7 @@ const ExamsPage: React.FC = () => {
   const handleDelete = async (id: string) => {
     if (!window.confirm('Are you sure you want to delete this exam?')) return;
     try {
-      await axios.delete(`http://localhost:3000/api/exams/${id}`);
+      await axios.delete(`http://localhost:3001/api/exams/${id}`);
       fetchExams();
     } catch (err) {
       console.error('Failed to delete exam', err);
@@ -90,7 +168,8 @@ const ExamsPage: React.FC = () => {
               </div>
               <h3 className="serif">{exam.title}</h3>
               <p className="professor">Prof: {exam.professor}</p>
-              <div className="card-footer">
+              <div className="card-footer" style={{ marginTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <button className="btn btn-link" onClick={() => setViewingExamId(exam.id!)}>View Exam</button>
                 <div className="actions">
                   <button className="btn btn-icon" onClick={() => handleEdit(exam.id!)} title="Edit">
                     Edit
@@ -103,6 +182,10 @@ const ExamsPage: React.FC = () => {
             </div>
           ))}
         </div>
+      )}
+
+      {viewingExamId && (
+        <ExamView examId={viewingExamId} onDismiss={() => setViewingExamId(null)} />
       )}
     </div>
   );

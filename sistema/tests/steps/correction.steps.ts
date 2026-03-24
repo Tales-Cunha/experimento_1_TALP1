@@ -36,6 +36,39 @@ let studentUploadMeta: { filename: string; contentType: string } = {
 };
 let currentCpfContext = '';
 
+const STANDARD_ANSWER_KEY_FIXTURE = [
+  'exam_number,q1,q2',
+  '001,AB,C',
+  '002,A,BC',
+].join('\n');
+
+const STANDARD_STUDENT_RESPONSES_FIXTURE = [
+  'exam_number,student_name,cpf,q1,q2',
+  '001,Ana Silva,111.111.111-11,AB,C',
+  '001,Bruno Costa,222.222.222-22,A,C',
+  '002,Carla Souza,333.333.333-33,A,BC',
+].join('\n');
+
+const GOOGLE_FORMS_STUDENT_RESPONSES_FIXTURE = [
+  'Timestamp,Email Address,Número da Prova,Nome Completo,CPF,Resposta Q1,Resposta Q2',
+  '2024-06-01 09:00,ana@email.com,001,Ana Silva,111.111.111-11,AB,C',
+  '2024-06-01 09:05,bruno@email.com,001,Bruno Costa,222.222.222-22,A,C',
+  '2024-06-01 09:10,carla@email.com,002,Carla Souza,333.333.333-33,A,BC',
+].join('\n');
+
+const EDGE_CASE_STUDENT_RESPONSES_FIXTURE = [
+  'exam_number,student_name,cpf,q1,q2',
+  ',Ghost Student,000.000.000-00,A,B',
+  '999,Unknown Student,444.444.444-44,A,B',
+].join('\n');
+
+const GOOGLE_FORMS_COLUMN_MAP_FIXTURE = JSON.stringify({
+  examNumber: 'Número da Prova',
+  name: 'Nome Completo',
+  cpf: 'CPF',
+  questions: ['Resposta Q1', 'Resposta Q2'],
+});
+
 function setLastResponse(response: Response): void {
   (globalThis as SharedScope).lastResponse = response;
 }
@@ -81,6 +114,69 @@ function getQuestionByName(entry: CorrectionResult, questionName: string): Quest
 
   return question;
 }
+
+async function submitCorrectionWithFiles(params: {
+  answerKeyCsv: string;
+  studentCsv: string;
+  mode: string;
+  columnMap?: string;
+}): Promise<Response> {
+  let req = request(app)
+    .post('/api/correct')
+    .field('mode', params.mode)
+    .attach('answerKeyCsv', Buffer.from(params.answerKeyCsv, 'utf-8'), {
+      filename: 'answer_key.csv',
+      contentType: 'text/csv',
+    })
+    .attach('studentResponsesCsv', Buffer.from(params.studentCsv, 'utf-8'), {
+      filename: 'student_responses.csv',
+      contentType: 'text/csv',
+    });
+
+  if (params.columnMap) {
+    req = req.field('columnMap', params.columnMap);
+  }
+
+  return req;
+}
+
+function projectComparableScores(report: CorrectionResult[]) {
+  return report
+    .map((entry) => ({
+      cpf: entry.cpf,
+      finalScore: entry.finalScore,
+      questions: entry.questions
+        .map((q) => ({ questionIndex: q.questionIndex, score: q.score }))
+        .sort((a, b) => a.questionIndex - b.questionIndex),
+    }))
+    .sort((a, b) => a.cpf.localeCompare(b.cpf, 'pt-BR'));
+}
+
+Given('I use the standard answer key fixture', () => {
+  answerKeyCsvContent = STANDARD_ANSWER_KEY_FIXTURE;
+  answerKeyUploadMeta = { filename: 'answer_key.csv', contentType: 'text/csv' };
+});
+
+Given('I use the standard student responses fixture', () => {
+  studentCsvContent = STANDARD_STUDENT_RESPONSES_FIXTURE;
+  studentUploadMeta = { filename: 'student_responses.csv', contentType: 'text/csv' };
+  columnMapJson = undefined;
+});
+
+Given('I use the Google Forms student responses fixture', () => {
+  studentCsvContent = GOOGLE_FORMS_STUDENT_RESPONSES_FIXTURE;
+  studentUploadMeta = { filename: 'google_forms_export.csv', contentType: 'text/csv' };
+});
+
+Given('I use the edge-case student responses fixture', () => {
+  studentCsvContent = EDGE_CASE_STUDENT_RESPONSES_FIXTURE;
+  studentUploadMeta = { filename: 'student_responses_edge_cases.csv', contentType: 'text/csv' };
+  columnMapJson = undefined;
+});
+
+Given('I use the Google Forms columnMap fixture', () => {
+  columnMapJson = GOOGLE_FORMS_COLUMN_MAP_FIXTURE;
+});
 
 Given('the answer key CSV is:', (docString: string) => {
   answerKeyCsvContent = docString;
@@ -237,4 +333,45 @@ Then('the report should include cpf {string}', (cpf: string) => {
 Then('the report entry for cpf {string} should include a non-empty warning', (cpf: string) => {
   const entry = getEntryByCpf(cpf);
   expect(entry.warning).to.be.a('string').and.not.empty;
+});
+
+Then('the Google Forms fixture scores should exactly match the standard fixture scores', async () => {
+  const standardResponse = await submitCorrectionWithFiles({
+    answerKeyCsv: STANDARD_ANSWER_KEY_FIXTURE,
+    studentCsv: STANDARD_STUDENT_RESPONSES_FIXTURE,
+    mode: 'strict',
+  });
+  expect(standardResponse.status).to.equal(200);
+
+  const googleFormsResponse = await submitCorrectionWithFiles({
+    answerKeyCsv: STANDARD_ANSWER_KEY_FIXTURE,
+    studentCsv: GOOGLE_FORMS_STUDENT_RESPONSES_FIXTURE,
+    mode: 'strict',
+    columnMap: GOOGLE_FORMS_COLUMN_MAP_FIXTURE,
+  });
+  expect(googleFormsResponse.status).to.equal(200);
+
+  const standardReport = projectComparableScores(standardResponse.body as CorrectionResult[]);
+  const googleFormsReport = projectComparableScores(googleFormsResponse.body as CorrectionResult[]);
+
+  expect(googleFormsReport).to.deep.equal(standardReport);
+});
+
+Then('the edge-case fixture should skip blank exam number and include unknown exam warning', async () => {
+  const response = await submitCorrectionWithFiles({
+    answerKeyCsv: STANDARD_ANSWER_KEY_FIXTURE,
+    studentCsv: EDGE_CASE_STUDENT_RESPONSES_FIXTURE,
+    mode: 'strict',
+  });
+
+  expect(response.status).to.equal(200);
+  const report = response.body as CorrectionResult[];
+
+  const blankExamStudent = report.find((entry) => entry.cpf === '000.000.000-00');
+  expect(blankExamStudent).to.not.exist;
+
+  const unknownExamStudent = report.find((entry) => entry.cpf === '444.444.444-44');
+  expect(unknownExamStudent).to.exist;
+  expect(unknownExamStudent?.finalScore).to.equal(0);
+  expect(unknownExamStudent?.warning).to.be.a('string').and.not.empty;
 });

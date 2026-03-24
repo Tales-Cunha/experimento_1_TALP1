@@ -1,10 +1,44 @@
 const Database = require('better-sqlite3');
 const path = require('node:path');
 
-const dbPath = path.resolve(__dirname, '../data/app.db');
+const dbPath = path.resolve(__dirname, '../../data/app.db');
 const db = new Database(dbPath);
 
 db.pragma('foreign_keys = ON');
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS questions (
+    id TEXT PRIMARY KEY,
+    statement TEXT NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS alternatives (
+    id TEXT PRIMARY KEY,
+    question_id TEXT NOT NULL,
+    description TEXT NOT NULL,
+    is_correct INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY (question_id) REFERENCES questions(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS exams (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    professor TEXT NOT NULL,
+    date TEXT NOT NULL,
+    identification_mode TEXT NOT NULL CHECK (identification_mode IN ('letters', 'powers-of-2'))
+  );
+
+  CREATE TABLE IF NOT EXISTS exam_questions (
+    exam_id TEXT NOT NULL,
+    question_id TEXT NOT NULL,
+    position INTEGER NOT NULL,
+    PRIMARY KEY (exam_id, question_id),
+    FOREIGN KEY (exam_id) REFERENCES exams(id),
+    FOREIGN KEY (question_id) REFERENCES questions(id)
+  );
+`);
 
 const questionCount = db.prepare('SELECT COUNT(*) AS count FROM questions').get().count;
 

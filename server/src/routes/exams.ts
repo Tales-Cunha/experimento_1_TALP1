@@ -1,9 +1,11 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { ExamRepository } from '../repositories/examRepository';
 import { ValidationError } from '../errors';
+import { GenerationService } from '../services/generationService';
 
 const router = Router();
 const examRepository = new ExamRepository();
+const generationService = new GenerationService();
 
 const validateExamData = (body: any) => {
   const { title, subject, professor, date, questionIds } = body;
@@ -13,6 +15,14 @@ const validateExamData = (body: any) => {
   if (!questionIds || !Array.isArray(questionIds) || questionIds.length === 0) {
     throw new ValidationError('At least one questionId is required');
   }
+};
+
+const validateGenerateCount = (body: unknown): number => {
+  const count = (body as { count?: unknown }).count;
+  if (typeof count !== 'number' || !Number.isInteger(count) || count < 1 || count > 200) {
+    throw new ValidationError('count must be an integer between 1 and 200');
+  }
+  return count;
 };
 
 // GET / -> findAll()
@@ -42,6 +52,17 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
     validateExamData(req.body);
     const id = await examRepository.create(req.body);
     res.status(201).json({ id });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /:id/generate -> create exam copies bundle
+router.post('/:id/generate', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const count = validateGenerateCount(req.body);
+    const { zipBuffer, csv } = await generationService.generate(req.params.id as string, count);
+    res.json({ zipBase64: zipBuffer.toString('base64'), csv });
   } catch (error) {
     next(error);
   }

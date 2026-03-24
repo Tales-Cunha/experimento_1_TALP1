@@ -235,10 +235,15 @@ const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel }) => {
       {error && <div className="error-message">{error}</div>}
 
       <div className="form-actions">
-        <button type="button" className="btn btn-secondary" onClick={onCancel}>Discard</button>
-        <button type="submit" className="btn btn-primary" disabled={loading}>
-          {loading ? 'Processing...' : (examId ? 'Apply Changes' : 'Confirm Exam')}
+        <button type="button" className="btn btn-back" onClick={onCancel}>
+          ← Back
         </button>
+        <div className="form-actions-right">
+          <button type="button" className="btn btn-secondary" onClick={onCancel}>Discard</button>
+          <button type="submit" className="btn btn-primary" disabled={loading}>
+            {loading ? 'Processing...' : (examId ? 'Apply Changes' : 'Confirm Exam')}
+          </button>
+        </div>
       </div>
     </form>
   );

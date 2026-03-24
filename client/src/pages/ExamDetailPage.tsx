@@ -10,9 +10,7 @@ interface GenerateResponse {
 
 interface GeneratedFiles {
   zipBlob: Blob;
-  csvBlob: Blob;
   zipName: string;
-  csvName: string;
 }
 
 const MIN_COPIES = 1;
@@ -117,6 +115,10 @@ const ExamDetailPage = () => {
 
   const questionCount = exam?.questions?.length ?? 0;
   const modeLabel = exam?.identificationMode === 'powers-of-2' ? 'Potências de 2' : 'Letras';
+  const copyWord = copies > 1 ? 'cópias' : 'cópia';
+  const generateButtonLabel = isGenerating
+    ? 'Gerando provas… (pode demorar alguns segundos)'
+    : `Gerar ${copies} ${copyWord} e baixar ZIP`;
 
   const breadcrumbTitle = useMemo(() => {
     if (isLoading) {
@@ -153,18 +155,15 @@ const ExamDetailPage = () => {
 
     try {
       const response = await axios.post<GenerateResponse>(`/api/exams/${id}/generate`, {
-        count: copies,
+        count: Number(copies),
       });
 
       const safeTitle = slugify(exam.title);
       const zipBlob = base64ToBlob(response.data.zipBase64, 'application/zip');
-      const csvBlob = new Blob([response.data.csv], { type: 'text/csv;charset=utf-8' });
 
       setGeneratedFiles({
         zipBlob,
-        csvBlob,
-        zipName: `provas-${safeTitle}.zip`,
-        csvName: `gabarito-${safeTitle}.csv`,
+        zipName: `provas-${safeTitle}-${copies}-copias.zip`,
       });
     } catch (error: unknown) {
       const message = axios.isAxiosError(error)
@@ -323,8 +322,12 @@ const ExamDetailPage = () => {
           onClick={handleGenerate}
           disabled={isGenerating}
         >
-          {isGenerating ? 'Gerando provas… (pode demorar alguns segundos)' : 'Gerar e Baixar'}
+          {generateButtonLabel}
         </button>
+
+        <p className="generate-description" style={{ marginTop: 10 }}>
+          O ZIP já inclui os PDFs e o arquivo answer_key.csv.
+        </p>
 
         {generateError && (
           <div className="generate-error-banner" role="alert">
@@ -344,15 +347,6 @@ const ExamDetailPage = () => {
             >
               <span className="file-icon" aria-hidden="true">📄</span>
               <span className="file-name">{generatedFiles.zipName}</span>
-              <span className="file-action">Baixar</span>
-            </button>
-            <button
-              type="button"
-              className="file-chip"
-              onClick={() => downloadBlob(generatedFiles.csvBlob, generatedFiles.csvName)}
-            >
-              <span className="file-icon" aria-hidden="true">📊</span>
-              <span className="file-name">{generatedFiles.csvName}</span>
               <span className="file-action">Baixar</span>
             </button>
           </div>

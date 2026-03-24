@@ -39,6 +39,13 @@ if (questionCount === 0) {
         );
       });
     }
+
+    const multiCorrectQuestionId = crypto.randomUUID();
+    insertQuestion.run(multiCorrectQuestionId, 'Select all prime numbers below 6');
+    insertAlternative.run(crypto.randomUUID(), multiCorrectQuestionId, '2', 1);
+    insertAlternative.run(crypto.randomUUID(), multiCorrectQuestionId, '3', 1);
+    insertAlternative.run(crypto.randomUUID(), multiCorrectQuestionId, '4', 0);
+    insertAlternative.run(crypto.randomUUID(), multiCorrectQuestionId, '5', 1);
   })();
 }
 

@@ -100,7 +100,7 @@ const ExamDetailPage = () => {
       setLoadError(null);
 
       try {
-        const response = await axios.get<ExamData>(`http://localhost:3001/api/exams/${id}`);
+        const response = await axios.get<ExamData>(`/api/exams/${id}`);
         setExam(response.data);
       } catch (error: unknown) {
         const message = axios.isAxiosError(error)
@@ -152,7 +152,7 @@ const ExamDetailPage = () => {
     setGeneratedFiles(null);
 
     try {
-      const response = await axios.post<GenerateResponse>(`http://localhost:3001/api/exams/${id}/generate`, {
+      const response = await axios.post<GenerateResponse>(`/api/exams/${id}/generate`, {
         count: copies,
       });
 

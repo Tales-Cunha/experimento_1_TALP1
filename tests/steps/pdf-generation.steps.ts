@@ -5,6 +5,9 @@ import app from '../../server/src/app';
 import { db } from '../../server/src/db/db';
 import { exams, examQuestions } from '../../server/src/db/schema';
 import { eq, asc } from 'drizzle-orm';
+import unzipper from 'unzipper';
+import { parse } from 'csv-parse/sync';
+import { Readable } from 'node:stream';
 
 interface GenerateSuccessBody {
   zipBase64: string;
@@ -35,46 +38,32 @@ function getExamIdByTitle(title: string): string {
 }
 
 function parseCsvRows(csv: string): string[][] {
-  return csv
-    .trim()
-    .split('\n')
-    .map((line) => line.split(',').map((cell) => cell.trim()));
+  return parse(csv, {
+    skip_empty_lines: true,
+    trim: true,
+  });
 }
 
-function listZipEntries(buffer: Buffer): string[] {
-  const entries: string[] = [];
-  let offset = 0;
+async function listZipEntries(buffer: Buffer): Promise<string[]> {
+  return new Promise((resolve, reject) => {
+    const entries: string[] = [];
+    const parser = unzipper.Parse();
 
-  while (offset + 30 <= buffer.length) {
-    const signature = buffer.readUInt32LE(offset);
-    if (signature !== 0x04034b50) {
-      offset += 1;
-      continue;
-    }
+    parser.on('entry', (entry) => {
+      entries.push(entry.path);
+      entry.autodrain();
+    });
 
-    const fileNameLength = buffer.readUInt16LE(offset + 26);
-    const extraLength = buffer.readUInt16LE(offset + 28);
-    const compressedSize = buffer.readUInt32LE(offset + 18);
-    const fileNameStart = offset + 30;
-    const fileNameEnd = fileNameStart + fileNameLength;
+    parser.on('close', () => {
+      resolve(entries);
+    });
 
-    if (fileNameEnd > buffer.length) {
-      break;
-    }
+    parser.on('error', (error: Error) => {
+      reject(error);
+    });
 
-    entries.push(buffer.toString('utf8', fileNameStart, fileNameEnd));
-
-    const dataStart = fileNameEnd + extraLength;
-    const nextOffset = dataStart + compressedSize;
-
-    if (nextOffset <= offset) {
-      break;
-    }
-
-    offset = nextOffset;
-  }
-
-  return entries;
+    Readable.from(buffer).pipe(parser);
+  });
 }
 
 Given('the exam identification mode is {string}', async (mode: string) => {
@@ -116,7 +105,7 @@ When('I request to generate {int} copies of the {string} exam', async (count: nu
   if (res.status === 200) {
     const body = res.body as GenerateSuccessBody;
     parsedCsvRows = parseCsvRows(body.csv);
-    zipEntries = listZipEntries(Buffer.from(body.zipBase64, 'base64'));
+    zipEntries = await listZipEntries(Buffer.from(body.zipBase64, 'base64'));
   }
 });
 
@@ -159,6 +148,9 @@ Then('each data row in the CSV should have {int} answer columns', (count: number
   const rows = parsedCsvRows.slice(1);
   rows.forEach((row) => {
     expect(row.length).to.equal(count + 1);
+    row.slice(1).forEach((answer) => {
+      expect(answer).to.be.a('string').and.not.empty;
+    });
   });
 });
 

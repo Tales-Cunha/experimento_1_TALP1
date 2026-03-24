@@ -17,7 +17,7 @@ const ExamsPage: React.FC = () => {
   const fetchExams = async () => {
     setLoading(true);
     try {
-      const res = await axios.get('http://localhost:3001/api/exams');
+      const res = await axios.get('/api/exams');
       setExams(res.data);
     } catch (err) {
       console.error('Failed to fetch exams', err);
@@ -34,7 +34,7 @@ const ExamsPage: React.FC = () => {
   const handleDelete = async (id: string) => {
     if (!globalThis.confirm('Are you sure you want to delete this exam?')) return;
     try {
-      await axios.delete(`http://localhost:3001/api/exams/${id}`);
+      await axios.delete(`/api/exams/${id}`);
       fetchExams();
     } catch (err) {
       console.error('Failed to delete exam', err);

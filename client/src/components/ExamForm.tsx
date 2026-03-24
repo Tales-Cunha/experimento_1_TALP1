@@ -41,7 +41,7 @@ const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel }) => {
 
   const fetchQuestions = async () => {
     try {
-      const res = await axios.get('http://localhost:3001/api/questions');
+      const res = await axios.get('/api/questions');
       setAllQuestions(res.data);
     } catch (err) {
       console.error('Failed to fetch questions', err);
@@ -50,7 +50,7 @@ const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel }) => {
 
   const fetchExam = async () => {
     try {
-      const res = await axios.get(`http://localhost:3001/api/exams/${examId}`);
+      const res = await axios.get(`/api/exams/${examId}`);
       const exam = res.data;
       setFormData({
         title: exam.title,
@@ -117,9 +117,9 @@ const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel }) => {
 
     try {
       if (examId) {
-        await axios.put(`http://localhost:3001/api/exams/${examId}`, formData);
+        await axios.put(`/api/exams/${examId}`, formData);
       } else {
-        await axios.post('http://localhost:3001/api/exams', formData);
+        await axios.post('/api/exams', formData);
       }
       onSuccess();
     } catch (err: any) {

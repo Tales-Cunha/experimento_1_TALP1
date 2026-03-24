@@ -13,7 +13,7 @@ const QuestionsPage: React.FC = () => {
   const fetchQuestions = async () => {
     setIsLoading(true);
     try {
-      const response = await axios.get('http://localhost:3001/api/questions');
+      const response = await axios.get('/api/questions');
       setQuestions(response.data);
     } catch (error: any) {
       console.error('Error fetching questions:', error);
@@ -30,7 +30,7 @@ const QuestionsPage: React.FC = () => {
   const handleCreate = async (data: QuestionData) => {
     try {
       setServerError(undefined);
-      await axios.post('http://localhost:3001/api/questions', data);
+      await axios.post('/api/questions', data);
       setIsCreating(false);
       fetchQuestions();
     } catch (error: any) {
@@ -46,7 +46,7 @@ const QuestionsPage: React.FC = () => {
     if (!editingQuestion?.id) return;
     try {
       setServerError(undefined);
-      await axios.put(`http://localhost:3001/api/questions/${editingQuestion.id}`, data);
+      await axios.put(`/api/questions/${editingQuestion.id}`, data);
       setEditingQuestion(null);
       fetchQuestions();
     } catch (error: any) {
@@ -59,9 +59,9 @@ const QuestionsPage: React.FC = () => {
   };
 
   const handleDelete = async (id: string, statement: string) => {
-    if (window.confirm(`Are you sure you want to delete this question?\n\n"${statement}"`)) {
+    if (globalThis.confirm(`Are you sure you want to delete this question?\n\n"${statement}"`)) {
       try {
-        await axios.delete(`http://localhost:3001/api/questions/${id}`);
+        await axios.delete(`/api/questions/${id}`);
         fetchQuestions();
       } catch (error) {
         console.error('Error deleting question:', error);

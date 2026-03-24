@@ -11,6 +11,11 @@
   --success-color: #10b981;
   --card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
   --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --font-heading: 'Playfair Display', serif;
+  --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  --radius: 12px;
+  --color-text-muted: var(--text-secondary);
+  --color-amber: #d97706;
 }
 
 [data-theme='dark'] {
@@ -21,6 +26,7 @@
   --secondary-bg: #1e293b;
   --border-color: #334155;
   --card-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3);
+  --color-amber: #f59e0b;
 }
 
 * {

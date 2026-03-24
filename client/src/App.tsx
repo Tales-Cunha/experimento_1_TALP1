@@ -3,6 +3,8 @@ import './App.css'
 import './Exams.css'
 import QuestionsPage from './pages/QuestionsPage';
 import ExamsPage from './pages/ExamsPage';
+import ExamDetailPage from './pages/ExamDetailPage';
+import ExamEditPage from './pages/ExamEditPage';
 import { ThemeProvider, useTheme } from './components/ThemeProvider';
 
 const Navigation = () => {
@@ -35,6 +37,8 @@ function App() {
             <Route path="/" element={<Navigate to="/questions" replace />} />
             <Route path="/questions" element={<QuestionsPage />} />
             <Route path="/exams" element={<ExamsPage />} />
+            <Route path="/exams/:id" element={<ExamDetailPage />} />
+            <Route path="/exams/:id/edit" element={<ExamEditPage />} />
           </Routes>
         </main>
       </Router>

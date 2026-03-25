@@ -13,4 +13,12 @@ router.delete('/reset', (req: Request, res: Response, next: NextFunction) => {
   }
 });
 
+router.get('/panic', (req: Request, res: Response, next: NextFunction) => {
+  try {
+    throw new Error('Forced panic for error-handler tests');
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

@@ -51,3 +51,28 @@ Feature: Server security hardening
     When I submit both files for correction in "strict" mode
     Then I should receive a 422 Unprocessable Entity error
     And the error message should mention "CSV"
+
+  Scenario: QuestionRepository maps SQLite NOT NULL constraint to ValidationError
+    When I call QuestionRepository create with a null statement payload
+    Then the repository call should fail with "ValidationError"
+    And the repository error message should mention "question statement"
+
+  Scenario: ExamRepository maps SQLite CHECK constraint to ValidationError
+    Given a valid question exists for repository-level exam creation
+    When I call ExamRepository create with an invalid identification mode
+    Then the repository call should fail with "ValidationError"
+    And the repository error message should mention "identification mode"
+
+  Scenario: Error handler returns 500 JSON for unknown errors without stack traces
+    When I call "GET" "/api/test/panic" in test mode
+    Then the response status should be 500
+    And the error payload should have only the "error" field
+    And the error message should be exactly "Internal Server Error"
+
+  Scenario: Error handler returns 404 and 422 with safe JSON payload
+    When I call "GET" "/api/questions/non-existent-uuid" in test mode
+    Then the response status should be 404
+    And the error payload should have only the "error" field
+    When I call "POST" "/api/questions" with an invalid question payload in test mode
+    Then the response status should be 422
+    And the error payload should have only the "error" field

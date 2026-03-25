@@ -2,8 +2,17 @@ import { Then, When } from '@cucumber/cucumber';
 import { expect } from 'chai';
 import request, { Response } from 'supertest';
 import app, { createApp } from '../../server/src/app';
+import { QuestionRepository, type QuestionData } from '../../server/src/repositories/questionRepository';
+import { ExamRepository, type CreateExamDTO } from '../../server/src/repositories/examRepository';
+
+interface CapturedRepositoryError {
+  name: string;
+  message: string;
+}
 
 let securityLastResponse: Response;
+let securityLastRepositoryError: CapturedRepositoryError | undefined;
+let repositoryQuestionIdForExam = '';
 
 function setSecurityResponse(response: Response): void {
   securityLastResponse = response;
@@ -96,4 +105,110 @@ Then('the error message should mention {string}', (snippet: string) => {
   const response = getSecurityResponse();
   const message = String(response.body.error ?? response.body.message ?? '');
   expect(message.toLowerCase()).to.include(snippet.toLowerCase());
+});
+
+When('I call QuestionRepository create with a null statement payload', async () => {
+  securityLastRepositoryError = undefined;
+  const repository = new QuestionRepository();
+
+  const invalidPayload = {
+    statement: null,
+    alternatives: [
+      { description: 'A', isCorrect: true },
+      { description: 'B', isCorrect: false },
+    ],
+  } as unknown as QuestionData;
+
+  try {
+    await repository.create(invalidPayload);
+  } catch (error: unknown) {
+    const normalized = error as { name?: string; message?: string };
+    securityLastRepositoryError = {
+      name: normalized.name ?? 'Error',
+      message: normalized.message ?? '',
+    };
+  }
+});
+
+When('a valid question exists for repository-level exam creation', async () => {
+  const questionRepository = new QuestionRepository();
+  const createdQuestion = await questionRepository.create({
+    statement: 'Repository question for exam constraint scenario',
+    alternatives: [
+      { description: 'Correct', isCorrect: true },
+      { description: 'Incorrect', isCorrect: false },
+    ],
+  });
+
+  repositoryQuestionIdForExam = createdQuestion.id;
+  expect(repositoryQuestionIdForExam).to.not.equal('');
+});
+
+When('I call ExamRepository create with an invalid identification mode', async () => {
+  securityLastRepositoryError = undefined;
+  const repository = new ExamRepository();
+
+  const invalidPayload = {
+    title: 'Constraint exam',
+    subject: 'Math',
+    professor: 'Prof',
+    date: '2026-03-25',
+    identificationMode: 'invalid-mode',
+    questionIds: [repositoryQuestionIdForExam],
+  } as unknown as CreateExamDTO;
+
+  try {
+    await repository.create(invalidPayload);
+  } catch (error: unknown) {
+    const normalized = error as { name?: string; message?: string };
+    securityLastRepositoryError = {
+      name: normalized.name ?? 'Error',
+      message: normalized.message ?? '',
+    };
+  }
+});
+
+Then('the repository call should fail with {string}', (expectedName: string) => {
+  expect(securityLastRepositoryError).to.exist;
+  expect(securityLastRepositoryError?.name).to.equal(expectedName);
+});
+
+Then('the repository error message should mention {string}', (snippet: string) => {
+  expect(securityLastRepositoryError).to.exist;
+  expect((securityLastRepositoryError?.message ?? '').toLowerCase()).to.include(snippet.toLowerCase());
+});
+
+When('I call {string} {string} in test mode', async (method: string, path: string) => {
+  const testApp = createApp({ nodeEnv: 'test' });
+  const upperMethod = method.toUpperCase();
+
+  if (upperMethod === 'GET') {
+    setSecurityResponse(await request(testApp).get(path));
+    return;
+  }
+
+  throw new Error(`Unsupported method for this step: ${method}`);
+});
+
+When('I call {string} {string} with an invalid question payload in test mode', async (method: string, path: string) => {
+  const testApp = createApp({ nodeEnv: 'test' });
+  const upperMethod = method.toUpperCase();
+
+  if (upperMethod === 'POST') {
+    setSecurityResponse(await request(testApp).post(path).send({ statement: '', alternatives: [] }));
+    return;
+  }
+
+  throw new Error(`Unsupported method for this step: ${method}`);
+});
+
+Then('the error payload should have only the {string} field', (fieldName: string) => {
+  const response = getSecurityResponse();
+  const keys = Object.keys(response.body as Record<string, unknown>);
+  expect(keys).to.deep.equal([fieldName]);
+});
+
+Then('the error message should be exactly {string}', (expectedMessage: string) => {
+  const response = getSecurityResponse();
+  expect(String(response.body.error ?? '')).to.equal(expectedMessage);
 });

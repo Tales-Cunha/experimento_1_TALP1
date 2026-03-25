@@ -1,10 +1,26 @@
 import { Request, Response, NextFunction } from 'express';
 
-export const errorHandler = (err: any, req: Request, res: Response, next: NextFunction) => {
-  const statusCode = err.statusCode || 500;
-  const message = err.message || 'Internal Server Error';
+interface AppErrorShape {
+  statusCode?: number;
+  message?: string;
+  name?: string;
+}
 
-  console.error(`[Error Handler] ${err.name}: ${message}`);
+function asAppError(value: unknown): AppErrorShape {
+  if (value && typeof value === 'object') {
+    return value as AppErrorShape;
+  }
+
+  return {};
+}
+
+export const errorHandler = (err: unknown, req: Request, res: Response, next: NextFunction) => {
+  const normalizedError = asAppError(err);
+  const statusCode = normalizedError.statusCode ?? 500;
+  const message = normalizedError.message ?? 'Internal Server Error';
+  const name = normalizedError.name ?? 'Error';
+
+  console.error(`[Error Handler] ${name}: ${message}`);
 
   res.status(statusCode).json({ error: message });
 };

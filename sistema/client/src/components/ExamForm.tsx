@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
+import type { AxiosError } from 'axios';
 import type { ExamData, QuestionData, IdentificationMode } from '../types';
 
 interface ExamFormProps {
@@ -14,6 +15,20 @@ interface ValidationErrors {
   professor?: string;
   date?: string;
   questionIds?: string;
+}
+
+interface ApiErrorResponse {
+  message?: string;
+  error?: string;
+}
+
+interface ExamResponse {
+  title: string;
+  subject: string;
+  professor: string;
+  date: string;
+  identificationMode: IdentificationMode;
+  questions: Array<{ id: string }>;
 }
 
 const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel }) => {
@@ -50,18 +65,19 @@ const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel }) => {
 
   const fetchExam = async () => {
     try {
-      const res = await axios.get(`/api/exams/${examId}`);
+      const res = await axios.get<ExamResponse>(`/api/exams/${examId}`);
       const exam = res.data;
       setFormData({
         title: exam.title,
         subject: exam.subject,
         professor: exam.professor,
         date: exam.date,
-        identificationMode: exam.identificationMode as IdentificationMode,
-        questionIds: exam.questions.map((q: any) => q.id)
+        identificationMode: exam.identificationMode,
+        questionIds: exam.questions.map((q) => q.id)
       });
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load exam');
+    } catch (err: unknown) {
+      const axiosError = err as AxiosError<ApiErrorResponse>;
+      setError(axiosError.response?.data?.message || 'Failed to load exam');
     }
   };
 
@@ -100,7 +116,7 @@ const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel }) => {
     setTouched(prev => ({ ...prev, [field]: true }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     setTouched({
       title: true,
@@ -122,8 +138,9 @@ const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel }) => {
         await axios.post('/api/exams', formData);
       }
       onSuccess();
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Something went wrong');
+    } catch (err: unknown) {
+      const axiosError = err as AxiosError<ApiErrorResponse>;
+      setError(axiosError.response?.data?.message || 'Something went wrong');
     } finally {
       setLoading(false);
     }

@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import type { AxiosError } from 'axios';
 import QuestionForm from '../components/QuestionForm';
 import type { QuestionData } from '../types.ts';
+
+interface ApiErrorResponse {
+  error?: string;
+}
 
 const QuestionsPage: React.FC = () => {
   const [questions, setQuestions] = useState<QuestionData[]>([]);
@@ -16,7 +21,7 @@ const QuestionsPage: React.FC = () => {
     try {
       const response = await axios.get('/api/questions');
       setQuestions(response.data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching questions:', error);
       alert('Failed to load questions. Is the server running?');
     } finally {
@@ -35,9 +40,10 @@ const QuestionsPage: React.FC = () => {
       setIsCreating(false);
       setSuccessMessage('Questão salva com sucesso.');
       fetchQuestions();
-    } catch (error: any) {
-      if (error.response?.status === 422) {
-        setServerError(error.response.data.error);
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error) && error.response?.status === 422) {
+        const typedError = error as AxiosError<ApiErrorResponse>;
+        setServerError(typedError.response?.data?.error);
       } else {
         alert('An unexpected error occurred during creation.');
       }
@@ -52,9 +58,10 @@ const QuestionsPage: React.FC = () => {
       setEditingQuestion(null);
       setSuccessMessage('Questão salva com sucesso.');
       fetchQuestions();
-    } catch (error: any) {
-      if (error.response?.status === 422) {
-        setServerError(error.response.data.error);
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error) && error.response?.status === 422) {
+        const typedError = error as AxiosError<ApiErrorResponse>;
+        setServerError(typedError.response?.data?.error);
       } else {
         alert('An unexpected error occurred during update.');
       }

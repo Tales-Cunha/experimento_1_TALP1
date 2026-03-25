@@ -1,17 +1,21 @@
 import { Given, When, Then, Before } from '@cucumber/cucumber';
-import request from 'supertest';
+import request, { Response } from 'supertest';
 import { expect } from 'chai';
 import app from '../../server/src/app';
 import { db } from '../../server/src/db/db';
 import { exams, questions, examQuestions } from '../../server/src/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 
-let lastResponse: any;
+interface SharedScope {
+  lastResponse?: Response;
+}
+
+let lastResponse: Response | undefined;
 let lastCreatedExamId: string;
 
-function setLastResponse(res: any) {
+function setLastResponse(res: Response) {
   lastResponse = res;
-  (global as any).lastResponse = res;
+  (globalThis as SharedScope).lastResponse = res;
 }
 
 // Helper to get question IDs by statements
@@ -23,8 +27,8 @@ async function getQuestionIdsByStatements(statements: string[]): Promise<string[
 }
 
 Given('a clean exams state', async () => {
-    (db.run as any)(`DELETE FROM exam_questions`);
-    (db.run as any)(`DELETE FROM exams`);
+  (db.run as (sql: string) => unknown)(`DELETE FROM exam_questions`);
+  (db.run as (sql: string) => unknown)(`DELETE FROM exams`);
 });
 
 When('I create an exam with the following details:', async (dataTable) => {
@@ -112,7 +116,7 @@ Then('the exam subject should be {string}', async (subject: string) => {
 
 Then('the exam should contain {string} instead of {string}', async (included: string, excluded: string) => {
   const res = await request(app).get(`/api/exams/${lastCreatedExamId}`);
-  const statements = res.body.questions.map((q: any) => q.statement);
+  const statements = (res.body.questions as Array<{ statement: string }>).map((q) => q.statement);
   expect(statements).to.include(included);
   expect(statements).to.not.include(excluded);
 });

@@ -1,0 +1,8 @@
+{
+  "default": {
+    "paths": ["tests/features/**/*.feature"],
+    "requireModule": ["tsx"],
+    "require": ["tests/steps/**/*.steps.ts"],
+    "format": ["progress"]
+  }
+}

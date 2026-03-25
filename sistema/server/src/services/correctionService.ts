@@ -112,9 +112,16 @@ export class CorrectionService {
       throw new ValidationError('Answer key CSV must include at least one question column (q1, q2, ...)');
     }
 
-    const { answerKeyByExamNumber, alternativesPerQuestion } = this.buildAnswerKeyData(answerKeyRows, questionColumns);
+    const answerKeyByExamNumber = this.buildAnswerKeyMap(answerKeyRows, questionColumns);
     const studentRows = this.parseCsv(studentCsvString);
     const resolvedColumns = this.resolveStudentColumns(questionColumns, columnMap);
+    
+    const alternativesPerQuestion = this.calculateAlternativesPerQuestion(
+      answerKeyRows,
+      studentRows,
+      questionColumns,
+      resolvedColumns
+    );
 
     const results: StudentCorrectionResult[] = [];
 
@@ -202,45 +209,100 @@ export class CorrectionService {
     return headerRows[0] ?? [];
   }
 
-  private processAnswerKeyRow(
-    row: CsvRow,
-    questionColumns: string[],
-    map: Map<string, AnswerKeyEntry>,
-    alternativesPerQuestion: Record<string, number>
-  ) {
-    const rawExamNumber = this.getColumnValue(row, 'exam_number');
-    const examNumber = this.normalizeExamNumber(rawExamNumber);
-
-    if (rawExamNumber.trim().toLowerCase() === 'alternatives') {
-      for (const col of questionColumns) {
-         const val = Number.parseInt(this.getColumnValue(row, col), 10);
-         if (!Number.isNaN(val)) alternativesPerQuestion[col] = val;
-      }
-      return;
+  private extractAllAnswersForQuestion(
+    qCol: string, sCol: string, answerKeyRows: CsvRow[], studentRows: CsvRow[]
+  ): string[] {
+    const allAnswers: string[] = [];
+    for (const row of answerKeyRows) {
+       const val = this.getColumnValue(row, qCol).trim();
+       if (val) allAnswers.push(val);
     }
-
-    if (examNumber !== '') {
-      const answersByQuestion: Record<string, string> = {};
-      for (const col of questionColumns) {
-        answersByQuestion[col] = this.getColumnValue(row, col);
-      }
-      map.set(examNumber, { examNumber, answersByQuestion });
+    for (const row of studentRows) {
+       const val = this.getColumnValue(row, sCol).trim();
+       if (val) allAnswers.push(val);
     }
+    return allAnswers;
   }
 
-  private buildAnswerKeyData(answerKeyRows: CsvRow[], questionColumns: string[]): AnswerKeyData {
+  private getMaxPowerAlternatives(answers: string[]): number {
+    let maxPowerNum = 0;
+    for (const val of answers) {
+      const num = Number.parseInt(val, 10);
+      if (!Number.isNaN(num) && num > maxPowerNum) {
+        maxPowerNum = num;
+      }
+    }
+    return maxPowerNum > 0 ? Math.max(2, maxPowerNum.toString(2).length) : 2;
+  }
+
+  private getMaxLetterAlternatives(answers: string[]): number {
+    let maxChar = 64; 
+    for (const val of answers) {
+       const upper = val.toUpperCase();
+       for (const char of upper) {
+          const code = char.codePointAt(0) ?? 64;
+          if (code > maxChar && code >= 65 && code <= 90) {
+            maxChar = code;
+          }
+       }
+    }
+    return maxChar >= 65 ? Math.max(2, maxChar - 64) : 2;
+  }
+
+  private getMaxAlternativesFromAnswers(answers: string[]): number {
+    let isPowerOfTwo = true;
+    for (const val of answers) {
+       if (!/^\d+$/.test(val)) {
+         isPowerOfTwo = false;
+         break;
+       }
+    }
+
+    if (isPowerOfTwo) {
+       return this.getMaxPowerAlternatives(answers);
+    }
+    return this.getMaxLetterAlternatives(answers);
+  }
+
+  private calculateAlternativesPerQuestion(
+    answerKeyRows: CsvRow[], 
+    studentRows: CsvRow[], 
+    questionColumns: string[], 
+    resolvedColumns: ResolvedStudentColumns
+  ): Record<string, number> {
+    const alternativesCount: Record<string, number> = {};
+
+    for (let i = 0; i < questionColumns.length; i++) {
+      const qCol = questionColumns[i];
+      const sCol = resolvedColumns.questions[i];
+
+      const allAnswers = this.extractAllAnswersForQuestion(qCol, sCol, answerKeyRows, studentRows);
+      alternativesCount[qCol] = this.getMaxAlternativesFromAnswers(allAnswers);
+    }
+    return alternativesCount;
+  }
+
+  private buildAnswerKeyMap(answerKeyRows: CsvRow[], questionColumns: string[]): Map<string, AnswerKeyEntry> {
     const map = new Map<string, AnswerKeyEntry>();
-    const alternativesPerQuestion: Record<string, number> = {};
 
     for (const row of answerKeyRows) {
-      this.processAnswerKeyRow(row, questionColumns, map, alternativesPerQuestion);
+      const examNumber = this.normalizeExamNumber(this.getColumnValue(row, 'exam_number'));
+      if (examNumber === '') {
+        continue;
+      }
+
+      const answersByQuestion: Record<string, string> = {};
+      for (const questionColumn of questionColumns) {
+        answersByQuestion[questionColumn] = this.getColumnValue(row, questionColumn);
+      }
+
+      map.set(examNumber, {
+        examNumber,
+        answersByQuestion,
+      });
     }
 
-    for (const col of questionColumns) {
-       if (!alternativesPerQuestion[col]) alternativesPerQuestion[col] = 4;
-    }
-
-    return { answerKeyByExamNumber: map, alternativesPerQuestion };
+    return map;
   }
 
   private resolveStudentColumns(questionColumns: string[], columnMap?: CorrectionColumnMap): ResolvedStudentColumns {

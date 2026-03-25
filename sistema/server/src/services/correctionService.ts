@@ -42,6 +42,11 @@ interface ResolvedStudentColumns {
   questions: string[];
 }
 
+interface AnswerKeyData {
+  answerKeyByExamNumber: Map<string, AnswerKeyEntry>;
+  alternativesPerQuestion: Record<string, number>;
+}
+
 interface CsvParser {
   parseRows(input: string): CsvRow[];
   parseHeader(input: string): string[][];
@@ -107,7 +112,7 @@ export class CorrectionService {
       throw new ValidationError('Answer key CSV must include at least one question column (q1, q2, ...)');
     }
 
-    const answerKeyByExamNumber = this.buildAnswerKeyMap(answerKeyRows, questionColumns);
+    const { answerKeyByExamNumber, alternativesPerQuestion } = this.buildAnswerKeyData(answerKeyRows, questionColumns);
     const studentRows = this.parseCsv(studentCsvString);
     const resolvedColumns = this.resolveStudentColumns(questionColumns, columnMap);
 
@@ -149,7 +154,7 @@ export class CorrectionService {
         const studentColumnName = resolvedColumns.questions[index] ?? questionColumn;
         const studentAnswer = this.getColumnValue(studentRow, studentColumnName);
         const correctAnswer = answerKeyEntry.answersByQuestion[questionColumn] ?? '';
-        const score = this.calculateQuestionScore(studentAnswer, correctAnswer, mode);
+        const score = this.calculateQuestionScore(studentAnswer, correctAnswer, mode, alternativesPerQuestion[questionColumn]);
 
         return {
           questionIndex: index + 1,
@@ -197,27 +202,45 @@ export class CorrectionService {
     return headerRows[0] ?? [];
   }
 
-  private buildAnswerKeyMap(answerKeyRows: CsvRow[], questionColumns: string[]): Map<string, AnswerKeyEntry> {
-    const map = new Map<string, AnswerKeyEntry>();
+  private processAnswerKeyRow(
+    row: CsvRow,
+    questionColumns: string[],
+    map: Map<string, AnswerKeyEntry>,
+    alternativesPerQuestion: Record<string, number>
+  ) {
+    const rawExamNumber = this.getColumnValue(row, 'exam_number');
+    const examNumber = this.normalizeExamNumber(rawExamNumber);
 
-    for (const row of answerKeyRows) {
-      const examNumber = this.normalizeExamNumber(this.getColumnValue(row, 'exam_number'));
-      if (examNumber === '') {
-        continue;
+    if (rawExamNumber.trim().toLowerCase() === 'alternatives') {
+      for (const col of questionColumns) {
+         const val = Number.parseInt(this.getColumnValue(row, col), 10);
+         if (!Number.isNaN(val)) alternativesPerQuestion[col] = val;
       }
-
-      const answersByQuestion: Record<string, string> = {};
-      for (const questionColumn of questionColumns) {
-        answersByQuestion[questionColumn] = this.getColumnValue(row, questionColumn);
-      }
-
-      map.set(examNumber, {
-        examNumber,
-        answersByQuestion,
-      });
+      return;
     }
 
-    return map;
+    if (examNumber !== '') {
+      const answersByQuestion: Record<string, string> = {};
+      for (const col of questionColumns) {
+        answersByQuestion[col] = this.getColumnValue(row, col);
+      }
+      map.set(examNumber, { examNumber, answersByQuestion });
+    }
+  }
+
+  private buildAnswerKeyData(answerKeyRows: CsvRow[], questionColumns: string[]): AnswerKeyData {
+    const map = new Map<string, AnswerKeyEntry>();
+    const alternativesPerQuestion: Record<string, number> = {};
+
+    for (const row of answerKeyRows) {
+      this.processAnswerKeyRow(row, questionColumns, map, alternativesPerQuestion);
+    }
+
+    for (const col of questionColumns) {
+       if (!alternativesPerQuestion[col]) alternativesPerQuestion[col] = 4;
+    }
+
+    return { answerKeyByExamNumber: map, alternativesPerQuestion };
   }
 
   private resolveStudentColumns(questionColumns: string[], columnMap?: CorrectionColumnMap): ResolvedStudentColumns {
@@ -296,26 +319,21 @@ export class CorrectionService {
     return true;
   }
 
-  private calculateQuestionScore(studentAnswer: string, expectedAnswer: string, mode: CorrectionMode): number {
+  private calculateQuestionScore(studentAnswer: string, expectedAnswer: string, mode: CorrectionMode, totalAlternatives: number): number {
     if (this.isPowerOfTwoMode(expectedAnswer, studentAnswer)) {
-      return this.calculatePowerOfTwoScore(studentAnswer, expectedAnswer, mode);
+      return this.calculatePowerOfTwoScore(studentAnswer, expectedAnswer, mode, totalAlternatives);
     }
 
-    return this.calculateLetterScore(studentAnswer, expectedAnswer, mode);
+    return this.calculateLetterScore(studentAnswer, expectedAnswer, mode, totalAlternatives);
   }
 
-  private calculateLetterScore(studentAnswer: string, expectedAnswer: string, mode: CorrectionMode): number {
+  private calculateLetterScore(studentAnswer: string, expectedAnswer: string, mode: CorrectionMode, totalAlternatives: number): number {
     const studentSet = this.toLetterSet(studentAnswer);
     const expectedSet = this.toLetterSet(expectedAnswer);
 
     if (mode === 'strict') {
       return this.areSetsEqual(studentSet, expectedSet) ? 1 : 0;
     }
-
-    // ASSUMPTION: the correction CSV does not include the full alternatives list per question,
-    // so we treat letter-mode questions as having 4 alternatives (A-D), which matches the
-    // exam template used in this project.
-    const totalAlternatives = 4;
 
     let errors = 0;
     for (let i = 0; i < totalAlternatives; i += 1) {
@@ -330,7 +348,7 @@ export class CorrectionService {
     return Math.max(0, this.round4(1 - errors / totalAlternatives));
   }
 
-  private calculatePowerOfTwoScore(studentAnswer: string, expectedAnswer: string, mode: CorrectionMode): number {
+  private calculatePowerOfTwoScore(studentAnswer: string, expectedAnswer: string, mode: CorrectionMode, totalAlternatives: number): number {
     const studentValue = Number.parseInt(studentAnswer.trim() || '0', 10);
     const expectedValue = Number.parseInt(expectedAnswer.trim() || '0', 10);
 
@@ -342,10 +360,18 @@ export class CorrectionService {
       return studentValue === expectedValue ? 1 : 0;
     }
 
-    // In power-of-2 mode, the student answer is only the sum value. We cannot reliably recover
-    // which individual alternatives were selected, so lenient error-count scoring is not possible.
-    // Therefore, we apply strict comparison even when lenient mode is requested.
-    return studentValue === expectedValue ? 1 : 0;
+    let errors = 0;
+
+    for (let i = 0; i < totalAlternatives; i++) {
+      const bit = 1 << i;
+      const studentSelected = (studentValue & bit) !== 0;
+      const shouldBeSelected = (expectedValue & bit) !== 0;
+      if (studentSelected !== shouldBeSelected) {
+        errors += 1;
+      }
+    }
+
+    return Math.max(0, this.round4(1 - errors / totalAlternatives));
   }
 
   private toLetterSet(value: string): Set<string> {

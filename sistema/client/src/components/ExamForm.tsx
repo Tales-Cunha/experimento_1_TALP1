@@ -52,6 +52,7 @@ const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel }) => {
     if (examId) {
       fetchExam();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [examId]);
 
   const fetchQuestions = async () => {

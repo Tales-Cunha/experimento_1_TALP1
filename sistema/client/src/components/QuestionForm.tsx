@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import type { AlternativeData, QuestionData } from '../types.ts';
 
 interface QuestionFormProps {
@@ -18,11 +18,7 @@ const QuestionForm: React.FC<QuestionFormProps> = ({ initialData, onSubmit, onCa
   );
   const [validationError, setValidationError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (serverError) {
-      setValidationError(serverError);
-    }
-  }, [serverError]);
+  const displayError = validationError || serverError;
 
   const handleAddAlternative = () => {
     setAlternatives([...alternatives, { description: '', isCorrect: false }]);
@@ -61,9 +57,9 @@ const QuestionForm: React.FC<QuestionFormProps> = ({ initialData, onSubmit, onCa
 
   return (
     <form onSubmit={handleSubmit} className="question-form">
-      {validationError && (
+      {displayError && (
         <div className="error-banner" role="alert">
-          {validationError}
+          {displayError}
         </div>
       )}
       

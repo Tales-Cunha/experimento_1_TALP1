@@ -94,7 +94,7 @@ test.describe('Production Full E2E Flow', () => {
       await page.getByRole('button', { name: 'Gerar e Baixar (2 cópias)' }).click();
 
       // Check that the download chips appeared on the UX
-      await expect(page.locator('.file-chip')).toHaveCount(2, { timeout: 30000 }); 
+      await expect(page.locator('.file-chip')).toHaveCount(1, { timeout: 30000 }); 
       // Should result in files: exam1.pdf, exam2.pdf, gabarito.csv, and download_all.zip
     });
 

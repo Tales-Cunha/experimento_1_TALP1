@@ -16,7 +16,7 @@ test.describe('Question management UI', () => {
     await page.getByPlaceholder('Alternativa 2').fill('São Paulo');
     await page.getByRole('button', { name: 'Salvar Questão' }).click();
 
-    await expect(page.locator('output')).toContainText('Questão salva com sucesso');
+    await expect(page.locator('[role="status"]')).toContainText('Questão salva com sucesso');
     await expect(page.getByText('Qual é a capital do Brasil?')).toBeVisible();
   });
 

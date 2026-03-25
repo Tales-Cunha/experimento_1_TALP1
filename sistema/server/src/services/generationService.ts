@@ -60,7 +60,7 @@ export class GenerationService {
     const count = this.validateGenerateCount(requestBody);
     const loadedExam = await this.loadExamWithQuestionsAndAlternatives(examId);
     const generated = await this.generateArtifacts(loadedExam, count);
-    const csv = this.buildCsv(generated, loadedExam.questions.length);
+    const csv = this.buildCsv(generated, loadedExam.questions);
     const zipBuffer = await this.buildZip(generated, csv, loadedExam.title);
     return { zipBuffer, csv };
   }
@@ -311,13 +311,20 @@ export class GenerationService {
     doc.y = 65;
   }
 
-  private buildCsv(generated: GeneratedExamArtifact[], questionCount: number): string {
+  private buildCsv(generated: GeneratedExamArtifact[], questions: LoadedQuestion[]): string {
     const header = ['exam_number'];
-    for (let i = 0; i < questionCount; i += 1) {
+    for (let i = 0; i < questions.length; i += 1) {
       header.push(`q${i + 1}`);
     }
 
     const lines = [header.join(',')];
+    
+    const altsCount = ['alternatives'];
+    for (const q of questions) {
+      altsCount.push(q.alternatives.length.toString());
+    }
+    lines.push(altsCount.join(','));
+
     generated.forEach((item) => {
       lines.push([item.examNumber, ...item.answers].join(','));
     });

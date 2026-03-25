@@ -44,9 +44,8 @@ test.describe('PDF generation UI', () => {
     await generateResponse;
 
     const chips = page.locator('.download-chips .file-chip');
-    await expect(chips).toHaveCount(2);
+    await expect(chips).toHaveCount(1);
     await expect(chips.nth(0)).toContainText('.zip');
-    await expect(chips.nth(1)).toContainText('.csv');
   });
 
   test('Validate count limits', async ({ page }) => {

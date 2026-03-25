@@ -43,6 +43,12 @@ export interface GenerationResult {
 type RandomGenerator = () => number;
 
 export class GenerationService {
+  private static readonly MIN_UNDERLINE_LENGTH_PT = 170; // ~6cm
+  private static readonly ANSWER_LINE_GAP_PT = 6;
+  private static readonly ANSWER_LABEL_FONT_SIZE = 10;
+  private static readonly IDENTITY_BLOCK_BOTTOM_OFFSET_PT = 115;
+  private static readonly IDENTITY_LINE_GAP_PT = 12;
+
   private readonly examRepository = new ExamRepository();
   private readonly questionRepository = new QuestionRepository();
 
@@ -163,28 +169,26 @@ export class GenerationService {
     this.drawPageFrame(doc, exam, examNumber);
     doc.on('pageAdded', () => this.drawPageFrame(doc, exam, examNumber));
 
+    const marginLeft = doc.page.margins.left;
+    const alternativesOffset = 14;
+
     for (let index = 0; index < questions.length; index += 1) {
       const question = questions[index];
       doc.moveDown(0.4);
-      doc.fontSize(12).text(`${index + 1}. ${question.statement}`, { align: 'left' });
+      doc.fontSize(12).text(`${index + 1}. ${question.statement}`, marginLeft, doc.y, { align: 'left' });
 
       question.alternatives.forEach((alternative, altIndex) => {
         const label = exam.identificationMode === 'letters'
           ? String.fromCodePoint(65 + altIndex)
           : String(2 ** altIndex);
-        doc.text(`   ${label}) ${alternative.description}`);
+        doc.text(`${label}) ${alternative.description}`, marginLeft + alternativesOffset, doc.y, { align: 'left' });
       });
 
-      doc.moveDown(0.3);
-      doc.text('   Resposta: __________________________________');
+      this.drawAnswerLine(doc, exam.identificationMode, marginLeft + alternativesOffset);
       doc.moveDown(0.4);
     }
 
-    doc.addPage();
-    doc.moveDown(6);
-    doc.fontSize(14).text('Nome: ________________________________');
-    doc.moveDown(0.8);
-    doc.fontSize(14).text('CPF:  ________________________________');
+    this.drawIdentitySection(doc);
 
     doc.end();
 
@@ -192,6 +196,81 @@ export class GenerationService {
       doc.on('end', () => resolve(Buffer.concat(chunks)));
       doc.on('error', reject);
     });
+  }
+
+  private drawAnswerLine(
+    doc: InstanceType<typeof PDFDocument>,
+    mode: IdentificationMode,
+    startX: number,
+  ): void {
+    const labelText = mode === 'powers-of-2' ? 'Soma:' : 'Resposta:';
+    const marginRight = doc.page.width - doc.page.margins.right;
+    const requiredHeight = 28;
+
+    this.ensureVerticalSpace(doc, requiredHeight);
+
+    doc.y += GenerationService.ANSWER_LINE_GAP_PT;
+    doc.fontSize(GenerationService.ANSWER_LABEL_FONT_SIZE);
+
+    const lineY = doc.y;
+    doc.text(labelText, startX, lineY, { lineBreak: false });
+
+    const labelWidth = doc.widthOfString(labelText);
+    const underlineStartX = startX + labelWidth + 8;
+    const underlineEndX = Math.min(
+      marginRight,
+      underlineStartX + GenerationService.MIN_UNDERLINE_LENGTH_PT,
+    );
+
+    doc
+      .moveTo(underlineStartX, lineY + 10)
+      .lineTo(underlineEndX, lineY + 10)
+      .stroke();
+
+    doc.y = lineY + doc.currentLineHeight();
+  }
+
+  private drawIdentitySection(doc: InstanceType<typeof PDFDocument>): void {
+    const marginLeft = doc.page.margins.left;
+    const labelFontSize = 14;
+    const lineHeight = labelFontSize * 1.2;
+    const requiredHeight = lineHeight * 2 + GenerationService.IDENTITY_LINE_GAP_PT;
+    const blockTopY = doc.page.height - GenerationService.IDENTITY_BLOCK_BOTTOM_OFFSET_PT;
+
+    if (doc.y + 16 > blockTopY) {
+      doc.addPage();
+    }
+
+    const finalBlockTopY = doc.page.height - GenerationService.IDENTITY_BLOCK_BOTTOM_OFFSET_PT;
+
+    this.ensureVerticalSpace(doc, requiredHeight, false);
+
+    doc.fontSize(labelFontSize);
+
+    const firstLineY = finalBlockTopY;
+    doc.text('Nome: _______________________________________________', marginLeft, firstLineY, {
+      lineBreak: false,
+    });
+
+    const secondLineY = firstLineY + lineHeight + GenerationService.IDENTITY_LINE_GAP_PT;
+    doc.text('CPF:  _______________________________________________', marginLeft, secondLineY, {
+      lineBreak: false,
+    });
+
+    doc.y = secondLineY + doc.currentLineHeight();
+  }
+
+  private ensureVerticalSpace(
+    doc: InstanceType<typeof PDFDocument>,
+    requiredHeight: number,
+    forceNewPageForSection = false,
+  ): void {
+    const bottomLimit = doc.page.height - 70;
+    const mustBreak = forceNewPageForSection || doc.y + requiredHeight > bottomLimit;
+
+    if (mustBreak) {
+      doc.addPage();
+    }
   }
 
   private drawPageFrame(doc: InstanceType<typeof PDFDocument>, exam: LoadedExam, examNumber: string): void {

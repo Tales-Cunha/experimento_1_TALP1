@@ -2,6 +2,7 @@ import PDFDocument from 'pdfkit';
 import archiver from 'archiver';
 import { PassThrough } from 'node:stream';
 import { randomBytes } from 'node:crypto';
+import { ValidationError } from '../errors';
 import { ExamRepository } from '../repositories/examRepository';
 import { QuestionRepository } from '../repositories/questionRepository';
 
@@ -49,10 +50,14 @@ export class GenerationService {
   private static readonly IDENTITY_BLOCK_BOTTOM_OFFSET_PT = 115;
   private static readonly IDENTITY_LINE_GAP_PT = 12;
 
-  private readonly examRepository = new ExamRepository();
-  private readonly questionRepository = new QuestionRepository();
+  constructor(
+    private readonly examRepository: Pick<ExamRepository, 'findById'> = new ExamRepository(),
+    private readonly questionRepository: Pick<QuestionRepository, 'findById'> = new QuestionRepository(),
+    private readonly randomSeedGenerator: () => number = () => randomBytes(4).readUInt32LE(0),
+  ) {}
 
-  async generate(examId: string, count: number): Promise<GenerationResult> {
+  async generate(examId: string, requestBody: unknown): Promise<GenerationResult> {
+    const count = this.validateGenerateCount(requestBody);
     const loadedExam = await this.loadExamWithQuestionsAndAlternatives(examId);
     const generated = await this.generateArtifacts(loadedExam, count);
     const csv = this.buildCsv(generated, loadedExam.questions.length);
@@ -115,7 +120,20 @@ export class GenerationService {
   }
 
   private randomSeed(): number {
-    return randomBytes(4).readUInt32LE(0);
+    return this.randomSeedGenerator();
+  }
+
+  private validateGenerateCount(requestBody: unknown): number {
+    if (!requestBody || typeof requestBody !== 'object') {
+      throw new ValidationError('count must be an integer between 1 and 200');
+    }
+
+    const count = (requestBody as { count?: unknown }).count;
+    if (typeof count !== 'number' || !Number.isInteger(count) || count < 1 || count > 200) {
+      throw new ValidationError('count must be an integer between 1 and 200');
+    }
+
+    return count;
   }
 
   private createSeededRng(seed: number): RandomGenerator {

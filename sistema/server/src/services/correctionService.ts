@@ -42,7 +42,57 @@ interface ResolvedStudentColumns {
   questions: string[];
 }
 
+interface CsvParser {
+  parseRows(input: string): CsvRow[];
+  parseHeader(input: string): string[][];
+}
+
+interface UploadCorrectionRequest {
+  answerKeyFile?: Express.Multer.File;
+  studentResponsesFile?: Express.Multer.File;
+  mode: unknown;
+  columnMap: unknown;
+}
+
 export class CorrectionService {
+  constructor(
+    private readonly logger: Pick<Console, 'warn'> = console,
+    private readonly csvParser: CsvParser = {
+      parseRows: (input) => parse(input, {
+        columns: true,
+        skip_empty_lines: true,
+        trim: true,
+      }) as CsvRow[],
+      parseHeader: (input) => parse(input, {
+        columns: false,
+        skip_empty_lines: true,
+        trim: true,
+      }) as string[][],
+    },
+  ) {}
+
+  correctFromUpload(input: UploadCorrectionRequest): StudentCorrectionResult[] {
+    const { answerKeyFile, studentResponsesFile } = input;
+
+    if (!answerKeyFile || !studentResponsesFile) {
+      throw new ValidationError('Both answerKeyCsv and studentResponsesCsv files are required');
+    }
+
+    if (!this.isCsvFile(answerKeyFile) || !this.isCsvFile(studentResponsesFile)) {
+      throw new ValidationError('Both uploaded files must be CSV');
+    }
+
+    const mode = this.parseMode(input.mode);
+    const columnMap = this.parseColumnMap(input.columnMap);
+
+    return this.correct(
+      answerKeyFile.buffer.toString('utf-8'),
+      studentResponsesFile.buffer.toString('utf-8'),
+      mode,
+      columnMap,
+    );
+  }
+
   correct(
     answerKeyCsvString: string,
     studentCsvString: string,
@@ -68,7 +118,7 @@ export class CorrectionService {
       const normalizedExamNumber = this.normalizeExamNumber(rawExamNumber);
 
       if (normalizedExamNumber === '') {
-        console.warn('[CorrectionService] Skipping student row with blank exam_number');
+        this.logger.warn('[CorrectionService] Skipping student row with blank exam_number');
         continue;
       }
 
@@ -126,11 +176,7 @@ export class CorrectionService {
 
   private parseCsv(csvString: string): CsvRow[] {
     try {
-      const rows: CsvRow[] = parse(csvString, {
-        columns: true,
-        skip_empty_lines: true,
-        trim: true,
-      });
+      const rows = this.csvParser.parseRows(csvString);
       return rows;
     } catch {
       throw new ValidationError('Invalid CSV format.');
@@ -146,11 +192,7 @@ export class CorrectionService {
       throw new ValidationError('CSV content is empty.');
     }
 
-    const headerRows: string[][] = parse(firstLine, {
-      columns: false,
-      skip_empty_lines: true,
-      trim: true,
-    });
+    const headerRows = this.csvParser.parseHeader(firstLine);
 
     return headerRows[0] ?? [];
   }
@@ -311,7 +353,7 @@ export class CorrectionService {
       .toUpperCase()
       .replace(/[^A-Z]/g, '');
 
-    return new Set(normalized.split('').filter((char) => char !== ''));
+    return new Set(normalized.split('').filter((char: string) => char !== ''));
   }
 
   private areSetsEqual(left: Set<string>, right: Set<string>): boolean {
@@ -334,5 +376,44 @@ export class CorrectionService {
 
   private round4(value: number): number {
     return Number(value.toFixed(4));
+  }
+
+  private isCsvFile(file: Express.Multer.File): boolean {
+    const mimetype = file.mimetype.toLocaleLowerCase();
+    const filename = file.originalname.toLocaleLowerCase();
+
+    if (mimetype === 'text/csv') {
+      return true;
+    }
+
+    if (mimetype === 'application/octet-stream' && filename.endsWith('.csv')) {
+      return true;
+    }
+
+    return false;
+  }
+
+  private parseMode(rawMode: unknown): CorrectionMode {
+    if (rawMode === 'strict' || rawMode === 'lenient') {
+      return rawMode;
+    }
+
+    throw new ValidationError('mode must be either "strict" or "lenient"');
+  }
+
+  private parseColumnMap(rawColumnMap: unknown): CorrectionColumnMap | undefined {
+    if (rawColumnMap === undefined || rawColumnMap === null || rawColumnMap === '') {
+      return undefined;
+    }
+
+    if (typeof rawColumnMap !== 'string') {
+      throw new ValidationError('columnMap must be a JSON string when provided');
+    }
+
+    try {
+      return JSON.parse(rawColumnMap) as CorrectionColumnMap;
+    } catch {
+      throw new ValidationError('columnMap must be valid JSON');
+    }
   }
 }

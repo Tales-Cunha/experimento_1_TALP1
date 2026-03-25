@@ -225,16 +225,17 @@ const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel }) => {
             />
           </div>
           {filteredQuestions.map(q => {
-            if (!q.id) {
+            const questionId = q.id;
+            if (!questionId) {
               return null;
             }
 
             return (
               <button
-                key={q.id}
+                key={questionId}
                 type="button"
-                className={`question-item ${formData.questionIds?.includes(q.id) ? 'selected' : ''}`}
-                onClick={() => handleToggleQuestion(q.id)}
+                className={`question-item ${formData.questionIds?.includes(questionId) ? 'selected' : ''}`}
+                onClick={() => handleToggleQuestion(questionId)}
               >
                 <span className="checkbox"></span>
                 <span className="statement">{q.statement}</span>

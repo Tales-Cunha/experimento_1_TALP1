@@ -71,12 +71,13 @@ export class ExamService {
       throw new ValidationError('title, subject, professor, and date are required and cannot be empty');
     }
 
-    return value;
+    return value.trim();
   }
 
   private validateIdentificationMode(value: unknown): IdentificationMode {
-    if (value === 'letters' || value === 'powers-of-2') {
-      return value;
+    const normalized = typeof value === 'string' ? value.trim() : value;
+    if (normalized === 'letters' || normalized === 'powers-of-2') {
+      return normalized;
     }
 
     throw new ValidationError('identificationMode must be either "letters" or "powers-of-2"');
@@ -92,6 +93,6 @@ export class ExamService {
       throw new ValidationError('All questionIds must be valid non-empty strings');
     }
 
-    return value as string[];
+    return (value as string[]).map((entry) => entry.trim());
   }
 }

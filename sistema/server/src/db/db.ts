@@ -1,14 +1,28 @@
 import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
-import * as path from 'path';
-import * as fs from 'fs';
+import * as path from 'node:path';
+import * as fs from 'node:fs';
 
 const dataDir = path.resolve(__dirname, '../../../data');
 if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
 
-const dbFileName = process.env.APP_DB_NAME?.trim() ? process.env.APP_DB_NAME.trim() : 'app.db';
+function resolveDbFileName(rawName: string | undefined): string {
+  const trimmed = rawName?.trim();
+  if (!trimmed) {
+    return 'app.db';
+  }
+
+  const baseName = path.basename(trimmed);
+  if (!/^[a-zA-Z0-9._-]+$/.test(baseName)) {
+    return 'app.db';
+  }
+
+  return baseName;
+}
+
+const dbFileName = resolveDbFileName(process.env.APP_DB_NAME);
 const sqlite = new Database(path.join(dataDir, dbFileName));
 sqlite.pragma('foreign_keys = ON');
 

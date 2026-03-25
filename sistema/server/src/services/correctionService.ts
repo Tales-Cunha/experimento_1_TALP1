@@ -58,16 +58,16 @@ export class CorrectionService {
   constructor(
     private readonly logger: Pick<Console, 'warn'> = console,
     private readonly csvParser: CsvParser = {
-      parseRows: (input) => parse(input, {
+      parseRows: (input): CsvRow[] => parse(input, {
         columns: true,
         skip_empty_lines: true,
         trim: true,
-      }) as CsvRow[],
-      parseHeader: (input) => parse(input, {
+      }),
+      parseHeader: (input): string[][] => parse(input, {
         columns: false,
         skip_empty_lines: true,
         trim: true,
-      }) as string[][],
+      }),
     },
   ) {}
 
@@ -351,7 +351,9 @@ export class CorrectionService {
   private toLetterSet(value: string): Set<string> {
     const normalized = value
       .toUpperCase()
-      .replace(/[^A-Z]/g, '');
+      .split('')
+      .filter((char: string) => /^[A-Z]$/.test(char))
+      .join('');
 
     return new Set(normalized.split('').filter((char: string) => char !== ''));
   }
@@ -382,36 +384,31 @@ export class CorrectionService {
     const mimetype = file.mimetype.toLocaleLowerCase();
     const filename = file.originalname.toLocaleLowerCase();
 
-    if (mimetype === 'text/csv') {
-      return true;
-    }
-
-    if (mimetype === 'application/octet-stream' && filename.endsWith('.csv')) {
-      return true;
-    }
-
-    return false;
+    return mimetype === 'text/csv' || filename.endsWith('.csv');
   }
 
   private parseMode(rawMode: unknown): CorrectionMode {
-    if (rawMode === 'strict' || rawMode === 'lenient') {
-      return rawMode;
+    const normalizedMode = typeof rawMode === 'string' ? rawMode.trim() : rawMode;
+    if (normalizedMode === 'strict' || normalizedMode === 'lenient') {
+      return normalizedMode;
     }
 
     throw new ValidationError('mode must be either "strict" or "lenient"');
   }
 
   private parseColumnMap(rawColumnMap: unknown): CorrectionColumnMap | undefined {
-    if (rawColumnMap === undefined || rawColumnMap === null || rawColumnMap === '') {
+    const normalizedColumnMap = typeof rawColumnMap === 'string' ? rawColumnMap.trim() : rawColumnMap;
+
+    if (normalizedColumnMap === undefined || normalizedColumnMap === null || normalizedColumnMap === '') {
       return undefined;
     }
 
-    if (typeof rawColumnMap !== 'string') {
+    if (typeof normalizedColumnMap !== 'string') {
       throw new ValidationError('columnMap must be a JSON string when provided');
     }
 
     try {
-      return JSON.parse(rawColumnMap) as CorrectionColumnMap;
+      return JSON.parse(normalizedColumnMap) as CorrectionColumnMap;
     } catch {
       throw new ValidationError('columnMap must be valid JSON');
     }

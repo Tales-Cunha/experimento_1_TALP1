@@ -60,7 +60,7 @@ export class QuestionService {
       const isCorrect = alternative.isCorrect === true || alternative.isCorrect === 1;
 
       return {
-        description: alternative.description,
+        description: alternative.description.trim(),
         isCorrect,
       };
     });
@@ -71,7 +71,7 @@ export class QuestionService {
     }
 
     return {
-      statement: payload.statement,
+      statement: payload.statement.trim(),
       alternatives,
     };
   }

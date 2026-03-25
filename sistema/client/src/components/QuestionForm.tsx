@@ -91,7 +91,7 @@ const QuestionForm: React.FC<QuestionFormProps> = ({ initialData, onSubmit, onCa
         
         {alternatives.map((alt, index) => (
           <div
-            key={`${alt.id ?? 'new'}-${alt.description}-${alt.isCorrect ? '1' : '0'}`}
+            key={alt.id ?? `new-${index}`}
             className="alternative-item"
             style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}
           >

@@ -71,6 +71,7 @@ Feature: Correction report generation from CSV uploads
       """
       exam_number,q1,q2
       4101,AB,C
+      4102,D,A
       """
     And the student responses CSV using the default format is:
       """

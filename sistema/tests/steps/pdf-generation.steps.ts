@@ -134,18 +134,18 @@ Then('the archive should contain exactly {int} CSV file', (count: number) => {
 });
 
 Then('the CSV file should have a header row and {int} data rows', (count: number) => {
-  expect(parsedCsvRows.length).to.equal(count + 2);
+  expect(parsedCsvRows.length).to.equal(count + 1);
 });
 
 Then('each data row in the CSV should start with a unique exam number', () => {
-  const rows = parsedCsvRows.slice(2);
+  const rows = parsedCsvRows.slice(1);
   const numbers = rows.map((row) => row[0]);
   const unique = new Set(numbers);
   expect(unique.size).to.equal(numbers.length);
 });
 
 Then('each data row in the CSV should have {int} answer columns', (count: number) => {
-  const rows = parsedCsvRows.slice(2);
+  const rows = parsedCsvRows.slice(1);
   rows.forEach((row) => {
     expect(row.length).to.equal(count + 1);
     row.slice(1).forEach((answer) => {
@@ -155,7 +155,7 @@ Then('each data row in the CSV should have {int} answer columns', (count: number
 });
 
 Then('the answers in the CSV should be non-empty strings of letters', () => {
-  const rows = parsedCsvRows.slice(2);
+  const rows = parsedCsvRows.slice(1);
   const answerRegex = /^[A-Z]+$/;
 
   rows.forEach((row) => {
@@ -166,7 +166,7 @@ Then('the answers in the CSV should be non-empty strings of letters', () => {
 });
 
 Then('the CSV answers should be non-empty numeric strings', () => {
-  const rows = parsedCsvRows.slice(2);
+  const rows = parsedCsvRows.slice(1);
   const answerRegex = /^\d+$/;
 
   rows.forEach((row) => {

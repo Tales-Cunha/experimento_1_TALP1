@@ -187,9 +187,9 @@ Then('the smoke generation zip should contain exactly {int} PDF files', (count: 
 });
 
 Then('the smoke answer key CSV should have exactly {int} data rows with unique exam numbers', (count: number) => {
-  expect(smokeAnswerKeyRows.length).to.equal(count + 2); // includes title and alternatives count
+  expect(smokeAnswerKeyRows.length).to.equal(count + 1);
 
-  const dataRows = smokeAnswerKeyRows.slice(2);
+  const dataRows = smokeAnswerKeyRows.slice(1);
   const examNumbers = dataRows.map((row) => row[0]);
   expect(examNumbers).to.have.lengthOf(count);
   expect(new Set(examNumbers).size).to.equal(count);
@@ -198,12 +198,11 @@ Then('the smoke answer key CSV should have exactly {int} data rows with unique e
 When(
   'I build smoke student responses where Ana answers row 1 correctly and Bruno answers row 2 incorrectly',
   async () => {
-    // 1 header + 1 alternatives + 2 answer rows
-    expect(smokeAnswerKeyRows.length).to.equal(4);
+    expect(smokeAnswerKeyRows.length).to.equal(3);
 
     const header = smokeAnswerKeyRows[0];
-    const row1 = smokeAnswerKeyRows[2];
-    const row2 = smokeAnswerKeyRows[3];
+    const row1 = smokeAnswerKeyRows[1];
+    const row2 = smokeAnswerKeyRows[2];
 
     const answerHeaders = header.slice(1);
     const anaAnswers = row1.slice(1);

@@ -7,11 +7,15 @@
   ],
   "scripts": {
     "dev": "concurrently \"npm run dev -w client\" \"npm run dev -w server\"",
+    "dev:server": "NODE_ENV=test PORT=3000 APP_DB_NAME=e2e.db npm run dev -w server",
+    "dev:client": "VITE_API_PROXY_TARGET=http://127.0.0.1:3000 npm run dev -w client -- --host 127.0.0.1 --port 5173",
     "build": "npm run build -w client && npm run build -w server",
-    "test": "cucumber-js"
+    "test": "cucumber-js",
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
     "@cucumber/cucumber": "^10.9.0",
+    "@playwright/test": "^1.58.2",
     "@types/chai": "^5.2.3",
     "@types/cucumber": "^6.0.1",
     "@types/unzipper": "^0.10.11",

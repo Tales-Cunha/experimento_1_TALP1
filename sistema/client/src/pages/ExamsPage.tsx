@@ -68,9 +68,7 @@ const ExamsPage: React.FC = () => {
     content = (
       <div className="empty-state">
         <p>No exams created yet.</p>
-        <button className="btn btn-link" onClick={() => setIsEditing(true)}>
-          Create your first exam
-        </button>
+        <Link className="btn btn-link" to="/exams/new">Create your first exam</Link>
       </div>
     );
   } else {
@@ -90,10 +88,26 @@ const ExamsPage: React.FC = () => {
             <p className="professor">Prof: {exam.professor}</p>
             <div className="card-footer" style={{ marginTop: '1rem', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
               <div className="actions">
-                <button className="btn btn-icon" onClick={() => handleEdit(exam.id!)} title="Edit">
+                <button
+                  className="btn btn-icon"
+                  onClick={() => {
+                    if (exam.id) {
+                      handleEdit(exam.id);
+                    }
+                  }}
+                  title="Edit"
+                >
                   Edit
                 </button>
-                <button className="btn btn-icon danger" onClick={() => handleDelete(exam.id!)} title="Delete">
+                <button
+                  className="btn btn-icon danger"
+                  onClick={() => {
+                    if (exam.id) {
+                      void handleDelete(exam.id);
+                    }
+                  }}
+                  title="Delete"
+                >
                   Delete
                 </button>
               </div>
@@ -111,9 +125,9 @@ const ExamsPage: React.FC = () => {
           <h1 className="serif">Exams Inventory</h1>
           <p className="hint">Manage your generated exams and question sheets.</p>
         </div>
-        <button className="btn btn-primary" style={{ marginLeft: '1rem' }} onClick={() => setIsEditing(true)}>
+        <Link className="btn btn-primary" style={{ marginLeft: '1rem' }} to="/exams/new">
           New Exam
-        </button>
+        </Link>
       </header>
 
       {content}

@@ -1,5 +1,5 @@
 import { db } from '../db/db';
-import { exams, examQuestions, questions } from '../db/schema';
+import { exams, examQuestions, questions, alternatives } from '../db/schema';
 import { eq, asc, inArray } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 import { NotFoundError, ValidationError } from '../errors';
@@ -23,6 +23,12 @@ export interface ExamWithQuestions {
   questions: {
     id: string;
     statement: string;
+    alternatives: {
+      id: string;
+      questionId: string;
+      description: string;
+      isCorrect: number;
+    }[];
   }[];
 }
 
@@ -32,7 +38,7 @@ export class ExamRepository {
     const results: ExamWithQuestions[] = [];
 
     for (const exam of allExams) {
-      const linkedQuestions = db
+      const linkedQuestionsBase = db
         .select({
           id: questions.id,
           statement: questions.statement,
@@ -42,6 +48,19 @@ export class ExamRepository {
         .where(eq(examQuestions.examId, exam.id))
         .orderBy(asc(examQuestions.position))
         .all();
+
+      const linkedQuestions = linkedQuestionsBase.map((question) => {
+        const questionAlternatives = db
+          .select()
+          .from(alternatives)
+          .where(eq(alternatives.questionId, question.id))
+          .all();
+
+        return {
+          ...question,
+          alternatives: questionAlternatives,
+        };
+      });
 
       results.push({
         ...exam,
@@ -58,7 +77,7 @@ export class ExamRepository {
       throw new NotFoundError(`Exam with ID ${id} not found`);
     }
 
-    const linkedQuestions = db
+    const linkedQuestionsBase = db
       .select({
         id: questions.id,
         statement: questions.statement,
@@ -68,6 +87,19 @@ export class ExamRepository {
       .where(eq(examQuestions.examId, id))
       .orderBy(asc(examQuestions.position))
       .all();
+
+    const linkedQuestions = linkedQuestionsBase.map((question) => {
+      const questionAlternatives = db
+        .select()
+        .from(alternatives)
+        .where(eq(alternatives.questionId, question.id))
+        .all();
+
+      return {
+        ...question,
+        alternatives: questionAlternatives,
+      };
+    });
 
     return {
       ...exam,

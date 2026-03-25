@@ -8,7 +8,8 @@ if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
 
-const sqlite = new Database(path.join(dataDir, 'app.db'));
+const dbFileName = process.env.APP_DB_NAME?.trim() ? process.env.APP_DB_NAME.trim() : 'app.db';
+const sqlite = new Database(path.join(dataDir, dbFileName));
 sqlite.pragma('foreign_keys = ON');
 
 export const db = drizzle(sqlite);

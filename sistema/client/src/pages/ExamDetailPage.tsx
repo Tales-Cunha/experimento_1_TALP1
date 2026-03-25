@@ -11,10 +11,13 @@ interface GenerateResponse {
 interface GeneratedFiles {
   zipBlob: Blob;
   zipName: string;
+  csvBlob: Blob;
+  csvName: string;
 }
 
 const MIN_COPIES = 1;
 const MAX_COPIES = 200;
+const MIN_GENERATE_LOADING_MS = 300;
 
 const slugify = (value: string): string => {
   const lower = value.toLowerCase();
@@ -118,7 +121,7 @@ const ExamDetailPage = () => {
   const copyWord = copies > 1 ? 'cópias' : 'cópia';
   const generateButtonLabel = isGenerating
     ? 'Gerando provas… (pode demorar alguns segundos)'
-    : `Gerar ${copies} ${copyWord} e baixar ZIP`;
+    : `Gerar e Baixar (${copies} ${copyWord})`;
 
   const breadcrumbTitle = useMemo(() => {
     if (isLoading) {
@@ -149,6 +152,7 @@ const ExamDetailPage = () => {
       return;
     }
 
+    const startedAt = Date.now();
     setIsGenerating(true);
     setGenerateError(null);
     setGeneratedFiles(null);
@@ -160,10 +164,13 @@ const ExamDetailPage = () => {
 
       const safeTitle = slugify(exam.title);
       const zipBlob = base64ToBlob(response.data.zipBase64, 'application/zip');
+      const csvBlob = new Blob([response.data.csv], { type: 'text/csv;charset=utf-8' });
 
       setGeneratedFiles({
         zipBlob,
         zipName: `provas-${safeTitle}-${copies}-copias.zip`,
+        csvBlob,
+        csvName: `answer_key-${safeTitle}-${copies}-copias.csv`,
       });
     } catch (error: unknown) {
       const message = axios.isAxiosError(error)
@@ -171,6 +178,12 @@ const ExamDetailPage = () => {
         : 'Não foi possível gerar as provas.';
       setGenerateError(message);
     } finally {
+      const elapsed = Date.now() - startedAt;
+      if (elapsed < MIN_GENERATE_LOADING_MS) {
+        await new Promise((resolve) => {
+          setTimeout(resolve, MIN_GENERATE_LOADING_MS - elapsed);
+        });
+      }
       setIsGenerating(false);
     }
   };
@@ -301,9 +314,18 @@ const ExamDetailPage = () => {
             >
               −
             </button>
-            <span id="copies-input" className="copies-display">
-              {copies}
-            </span>
+            <input
+              id="copies-input"
+              className="copies-display"
+              type="number"
+              min={MIN_COPIES}
+              max={MAX_COPIES}
+              value={copies}
+              onChange={(event) => {
+                setCopiesClamped(Number(event.target.value));
+              }}
+              disabled={isGenerating}
+            />
             <button
               type="button"
               className="stepper-btn"
@@ -347,6 +369,15 @@ const ExamDetailPage = () => {
             >
               <span className="file-icon" aria-hidden="true">📄</span>
               <span className="file-name">{generatedFiles.zipName}</span>
+              <span className="file-action">Baixar</span>
+            </button>
+            <button
+              type="button"
+              className="file-chip"
+              onClick={() => downloadBlob(generatedFiles.csvBlob, generatedFiles.csvName)}
+            >
+              <span className="file-icon" aria-hidden="true">📄</span>
+              <span className="file-name">{generatedFiles.csvName}</span>
               <span className="file-action">Baixar</span>
             </button>
           </div>

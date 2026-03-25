@@ -12,7 +12,7 @@ const QuestionForm: React.FC<QuestionFormProps> = ({ initialData, onSubmit, onCa
   const [statement, setStatement] = useState(initialData?.statement || '');
   const [alternatives, setAlternatives] = useState<AlternativeData[]>(
     initialData?.alternatives || [
-      { description: '', isCorrect: false },
+      { description: '', isCorrect: true },
       { description: '', isCorrect: false },
     ]
   );
@@ -53,30 +53,27 @@ const QuestionForm: React.FC<QuestionFormProps> = ({ initialData, onSubmit, onCa
     }
     if (!alternatives.some(alt => alt.isCorrect)) {
       setValidationError('At least one alternative must be marked as correct.');
+      return;
     }
 
-    try {
-      await onSubmit({ statement, alternatives });
-    } catch (err: any) {
-      // Errors are handled by the parent through serverError prop or re-thrown
-    }
+    await onSubmit({ statement, alternatives });
   };
 
   return (
     <form onSubmit={handleSubmit} className="question-form">
       {validationError && (
-        <div className="error-banner">
+        <div className="error-banner" role="alert">
           {validationError}
         </div>
       )}
       
       <div style={{ marginBottom: '1.5rem' }}>
         <label htmlFor="statement" style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem' }}>
-          Statement
+          Enunciado
         </label>
         <textarea
           id="statement"
-          placeholder="Enter the question statement here..."
+          placeholder="Digite o enunciado da questão..."
           value={statement}
           onChange={(e) => setStatement(e.target.value)}
           required
@@ -86,18 +83,22 @@ const QuestionForm: React.FC<QuestionFormProps> = ({ initialData, onSubmit, onCa
 
       <div className="alternatives-section">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-          <h3 style={{ margin: 0 }}>Alternatives</h3>
+          <h3 style={{ margin: 0 }}>Alternativas</h3>
           <button type="button" onClick={handleAddAlternative} className="primary-btn" style={{ padding: '0.4rem 0.8rem', fontSize: '0.9rem' }}>
-            + Add Option
+            + Adicionar Alternativa
           </button>
         </div>
         
         {alternatives.map((alt, index) => (
-          <div key={index} className="alternative-item" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <div
+            key={`${alt.id ?? 'new'}-${alt.description}-${alt.isCorrect ? '1' : '0'}`}
+            className="alternative-item"
+            style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}
+          >
             <div style={{ flex: 1 }}>
               <input
                 type="text"
-                placeholder={`Option ${index + 1}`}
+                placeholder={`Alternativa ${index + 1}`}
                 value={alt.description}
                 onChange={(e) => handleAlternativeChange(index, 'description', e.target.value)}
                 required
@@ -110,9 +111,9 @@ const QuestionForm: React.FC<QuestionFormProps> = ({ initialData, onSubmit, onCa
                 onChange={(e) => handleAlternativeChange(index, 'isCorrect', e.target.checked)}
                 style={{ width: 'auto', margin: 0 }}
               />
-              <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>Correct</span>
+              <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>Correta</span>
             </label>
-            {alternatives.length > 2 && (
+            {alternatives.length > 1 && (
               <button 
                 type="button" 
                 onClick={() => handleRemoveAlternative(index)}
@@ -127,8 +128,8 @@ const QuestionForm: React.FC<QuestionFormProps> = ({ initialData, onSubmit, onCa
       </div>
 
       <div className="form-actions" style={{ marginTop: '2.5rem', display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-        <button type="button" onClick={onCancel}>discard changes</button>
-        <button type="submit" className="primary-btn">publish question</button>
+        <button type="button" onClick={onCancel}>Cancelar</button>
+        <button type="submit" className="primary-btn">Salvar Questão</button>
       </div>
     </form>
   );

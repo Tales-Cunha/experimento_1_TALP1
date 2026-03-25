@@ -131,40 +131,43 @@ const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel }) => {
 
   return (
     <form onSubmit={handleSubmit} className="form-card" noValidate>
-      <h2 className="serif">{examId ? 'Refine Exam' : 'Draft New Exam'}</h2>
+      <h2 className="serif">{examId ? 'Editar Prova' : 'Nova Prova'}</h2>
 
       <div className={`form-group ${touched.title && errors.title ? 'invalid' : ''}`}>
-        <label>Exam Title</label>
+        <label htmlFor="exam-title">Título</label>
         <input
+          id="exam-title"
           type="text"
           value={formData.title}
           onChange={e => setFormData({ ...formData, title: e.target.value })}
           onBlur={() => handleBlur('title')}
-          placeholder="e.g. Physics Midterm 2024"
+          placeholder="Ex.: Prova 1"
         />
         <span className="invalid-feedback">{touched.title && errors.title}</span>
       </div>
 
       <div className="form-row">
         <div className={`form-group ${touched.subject && errors.subject ? 'invalid' : ''}`}>
-          <label>Subject</label>
+          <label htmlFor="exam-subject">Disciplina</label>
           <input
+            id="exam-subject"
             type="text"
             value={formData.subject}
             onChange={e => setFormData({ ...formData, subject: e.target.value })}
             onBlur={() => handleBlur('subject')}
-            placeholder="e.g. Physics"
+            placeholder="Ex.: Matemática"
           />
           <span className="invalid-feedback">{touched.subject && errors.subject}</span>
         </div>
         <div className={`form-group ${touched.professor && errors.professor ? 'invalid' : ''}`}>
-          <label>Professor</label>
+          <label htmlFor="exam-professor">Professor</label>
           <input
+            id="exam-professor"
             type="text"
             value={formData.professor}
             onChange={e => setFormData({ ...formData, professor: e.target.value })}
             onBlur={() => handleBlur('professor')}
-            placeholder="e.g. Dr. Feynman"
+            placeholder="Ex.: Prof. Silva"
           />
           <span className="invalid-feedback">{touched.professor && errors.professor}</span>
         </div>
@@ -172,8 +175,9 @@ const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel }) => {
 
       <div className="form-row">
         <div className={`form-group ${touched.date && errors.date ? 'invalid' : ''}`}>
-          <label>Date</label>
+          <label htmlFor="exam-date">Data</label>
           <input
+            id="exam-date"
             type="date"
             value={formData.date}
             onChange={e => setFormData({ ...formData, date: e.target.value })}
@@ -182,52 +186,62 @@ const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel }) => {
           <span className="invalid-feedback">{touched.date && errors.date}</span>
         </div>
         <div className="form-group">
-          <label>Identification Mode</label>
+          <label htmlFor="identification-mode-letters">Modo de identificação</label>
           <div className="radio-group">
             <label className="radio-option">
               <input
+                id="identification-mode-letters"
                 type="radio"
                 name="identificationMode"
                 checked={formData.identificationMode === 'letters'}
                 onChange={() => setFormData({ ...formData, identificationMode: 'letters' })}
               />
-              Letters (A-Z)
+              <span>Letras</span>
             </label>
             <label className="radio-option">
               <input
+                id="identification-mode-powers"
                 type="radio"
                 name="identificationMode"
                 checked={formData.identificationMode === 'powers-of-2'}
                 onChange={() => setFormData({ ...formData, identificationMode: 'powers-of-2' })}
               />
-              Powers (2^n)
+              <span>Potências de 2</span>
             </label>
           </div>
         </div>
       </div>
 
       <div className={`form-group ${touched.questionIds && errors.questionIds ? 'invalid' : ''}`}>
-        <label>Select Questions ({formData.questionIds?.length || 0} selected)</label>
+        <label htmlFor="question-search">Selecionar questões ({formData.questionIds?.length || 0} selecionadas)</label>
         <div className="question-selector">
           <div className="search-box">
             <input
+              id="question-search"
               type="text"
-              placeholder="Search statements..."
+              placeholder="Buscar enunciado..."
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
           </div>
-          {filteredQuestions.map(q => (
-            <div 
-              key={q.id!} 
-              className={`question-item ${formData.questionIds?.includes(q.id!) ? 'selected' : ''}`}
-              onClick={() => handleToggleQuestion(q.id!)}
-            >
-              <span className="checkbox"></span>
-              <span className="statement">{q.statement}</span>
-            </div>
-          ))}
-          {filteredQuestions.length === 0 && <p className="hint" style={{ padding: '16px' }}>No matching questions found.</p>}
+          {filteredQuestions.map(q => {
+            if (!q.id) {
+              return null;
+            }
+
+            return (
+              <button
+                key={q.id}
+                type="button"
+                className={`question-item ${formData.questionIds?.includes(q.id) ? 'selected' : ''}`}
+                onClick={() => handleToggleQuestion(q.id)}
+              >
+                <span className="checkbox"></span>
+                <span className="statement">{q.statement}</span>
+              </button>
+            );
+          })}
+          {filteredQuestions.length === 0 && <p className="hint" style={{ padding: '16px' }}>Nenhuma questão encontrada.</p>}
         </div>
         <span className="invalid-feedback">{touched.questionIds && errors.questionIds}</span>
       </div>
@@ -236,12 +250,12 @@ const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel }) => {
 
       <div className="form-actions">
         <button type="button" className="btn btn-back" onClick={onCancel}>
-          ← Back
+          ← Voltar
         </button>
         <div className="form-actions-right">
-          <button type="button" className="btn btn-secondary" onClick={onCancel}>Discard</button>
+          <button type="button" className="btn btn-secondary" onClick={onCancel}>Cancelar</button>
           <button type="submit" className="btn btn-primary" disabled={loading}>
-            {loading ? 'Processing...' : (examId ? 'Apply Changes' : 'Confirm Exam')}
+            {loading ? 'Salvando...' : 'Salvar Prova'}
           </button>
         </div>
       </div>

@@ -8,6 +8,7 @@ const QuestionsPage: React.FC = () => {
   const [editingQuestion, setEditingQuestion] = useState<QuestionData | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [serverError, setServerError] = useState<string | undefined>();
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchQuestions = async () => {
@@ -32,6 +33,7 @@ const QuestionsPage: React.FC = () => {
       setServerError(undefined);
       await axios.post('/api/questions', data);
       setIsCreating(false);
+      setSuccessMessage('Questão salva com sucesso.');
       fetchQuestions();
     } catch (error: any) {
       if (error.response?.status === 422) {
@@ -48,6 +50,7 @@ const QuestionsPage: React.FC = () => {
       setServerError(undefined);
       await axios.put(`/api/questions/${editingQuestion.id}`, data);
       setEditingQuestion(null);
+      setSuccessMessage('Questão salva com sucesso.');
       fetchQuestions();
     } catch (error: any) {
       if (error.response?.status === 422) {
@@ -59,9 +62,10 @@ const QuestionsPage: React.FC = () => {
   };
 
   const handleDelete = async (id: string, statement: string) => {
-    if (globalThis.confirm(`Are you sure you want to delete this question?\n\n"${statement}"`)) {
+    if (globalThis.confirm(`Deseja excluir esta questão?\n\n"${statement}"`)) {
       try {
         await axios.delete(`/api/questions/${id}`);
+        setSuccessMessage('Questão excluída com sucesso.');
         fetchQuestions();
       } catch (error) {
         console.error('Error deleting question:', error);
@@ -70,22 +74,31 @@ const QuestionsPage: React.FC = () => {
     }
   };
 
-  if (isLoading) return <div className="container">Loading questions...</div>;
+  if (isLoading) return <div className="container">Carregando questões...</div>;
 
   return (
     <div className="questions-page">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '2rem' }}>
-        <h1>Questions Repository</h1>
+        <h1>Banco de Questões</h1>
         {!isCreating && !editingQuestion && (
-          <button className="primary-btn" onClick={() => setIsCreating(true)}>
-            + Add New Question
+          <button className="primary-btn" onClick={() => {
+            setSuccessMessage(null);
+            setIsCreating(true);
+          }}>
+            + Nova Questão
           </button>
         )}
       </div>
 
+      {successMessage && (
+        <output className="card" aria-live="polite" style={{ marginBottom: '1rem', borderLeft: '4px solid #10b981' }}>
+          {successMessage}
+        </output>
+      )}
+
       {(isCreating || editingQuestion) && (
         <div className="card" style={{ marginBottom: '3rem', borderTop: '4px solid var(--accent-color)' }}>
-          <h2>{isCreating ? 'Draft New Question' : 'Refine Question'}</h2>
+          <h2>{isCreating ? 'Nova Questão' : 'Editar Questão'}</h2>
           <QuestionForm
             initialData={editingQuestion || undefined}
             onSubmit={isCreating ? handleCreate : handleUpdate}
@@ -100,9 +113,9 @@ const QuestionsPage: React.FC = () => {
       )}
 
       <div className="questions-list">
-        <h2>Active Inventory</h2>
+        <h2>Questões Cadastradas</h2>
         {questions.length === 0 ? (
-          <p style={{ opacity: 0.6 }}>No questions found. Add one above to get started.</p>
+          <p style={{ opacity: 0.6 }}>Nenhuma questão cadastrada.</p>
         ) : (
           questions.map((q) => (
             <div key={q.id} className="card question-item">
@@ -115,12 +128,21 @@ const QuestionsPage: React.FC = () => {
                 </div>
               </div>
               <div className="question-actions">
-                <button onClick={() => setEditingQuestion(q)}>Edit</button>
+                <button onClick={() => {
+                  setSuccessMessage(null);
+                  setEditingQuestion(q);
+                }}>
+                  Editar
+                </button>
                 <button 
-                  onClick={() => handleDelete(q.id!, q.statement)} 
+                  onClick={() => {
+                    if (q.id) {
+                      void handleDelete(q.id, q.statement);
+                    }
+                  }} 
                   style={{ color: 'var(--error-color)', borderColor: 'rgba(239, 68, 68, 0.2)' }}
                 >
-                  Delete
+                  Excluir
                 </button>
               </div>
             </div>

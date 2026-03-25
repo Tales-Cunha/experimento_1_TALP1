@@ -66,6 +66,20 @@ Feature: Correction report generation from CSV uploads
     Then question "q1" in the entry for cpf "55555555555" should have a non-zero score
     And question "q1" in the entry for cpf "55555555555" should have score less than its maximum
 
+  Scenario: Lenient mode counts omission and selection errors proportionally for 4 alternatives
+    Given the answer key CSV is:
+      """
+      exam_number,q1,q2
+      4101,AB,C
+      """
+    And the student responses CSV using the default format is:
+      """
+      exam_number,student_name,cpf,q1,q2
+      4101,Lucas Prado,51515151515,A,C
+      """
+    When I submit both CSV files for correction in "lenient" mode
+    Then question "q1" in the entry for cpf "51515151515" should have score 0.75
+
   Scenario: Report includes all required identification and scoring fields
     Given the answer key CSV is:
       """

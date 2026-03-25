@@ -272,6 +272,12 @@ Then('question {string} in that entry should have score {int}', (questionName: s
   expect(question.score).to.equal(score);
 });
 
+Then('question {string} in the entry for cpf {string} should have score {float}', (questionName: string, cpf: string, score: number) => {
+  const entry = getEntryByCpf(cpf);
+  const question = getQuestionByName(entry, questionName);
+  expect(question.score).to.equal(score);
+});
+
 Then('question {string} in the entry for cpf {string} should have a non-zero score', (questionName: string, cpf: string) => {
   const entry = getEntryByCpf(cpf);
   const question = getQuestionByName(entry, questionName);

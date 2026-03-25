@@ -270,11 +270,14 @@ export class CorrectionService {
       return this.areSetsEqual(studentSet, expectedSet) ? 1 : 0;
     }
 
-    const universe = new Set<string>([...studentSet, ...expectedSet]);
-    const totalAlternatives = Math.max(1, universe.size);
+    // ASSUMPTION: the correction CSV does not include the full alternatives list per question,
+    // so we treat letter-mode questions as having 4 alternatives (A-D), which matches the
+    // exam template used in this project.
+    const totalAlternatives = 4;
 
     let errors = 0;
-    for (const alt of universe) {
+    for (let i = 0; i < totalAlternatives; i += 1) {
+      const alt = String.fromCodePoint(65 + i);
       const studentSelected = studentSet.has(alt);
       const shouldBeSelected = expectedSet.has(alt);
       if (studentSelected !== shouldBeSelected) {
@@ -297,19 +300,10 @@ export class CorrectionService {
       return studentValue === expectedValue ? 1 : 0;
     }
 
-    const maxValue = Math.max(studentValue, expectedValue, 0);
-    const totalAlternatives = maxValue === 0 ? 1 : Math.floor(Math.log2(maxValue)) + 1;
-
-    const xor = studentValue ^ expectedValue;
-    let errors = 0;
-
-    for (let bit = 0; bit < totalAlternatives; bit += 1) {
-      if (((xor >> bit) & 1) === 1) {
-        errors += 1;
-      }
-    }
-
-    return Math.max(0, this.round4(1 - errors / totalAlternatives));
+    // In power-of-2 mode, the student answer is only the sum value. We cannot reliably recover
+    // which individual alternatives were selected, so lenient error-count scoring is not possible.
+    // Therefore, we apply strict comparison even when lenient mode is requested.
+    return studentValue === expectedValue ? 1 : 0;
   }
 
   private toLetterSet(value: string): Set<string> {

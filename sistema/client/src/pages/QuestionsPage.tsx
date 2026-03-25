@@ -98,9 +98,14 @@ const QuestionsPage: React.FC = () => {
       </div>
 
       {successMessage && (
-        <output className="card" aria-live="polite" style={{ marginBottom: '1rem', borderLeft: '4px solid #10b981' }}>
+        <div
+          className="card"
+          role="status"
+          aria-live="polite"
+          style={{ display: 'block', marginBottom: '1rem', borderLeft: '4px solid #10b981' }}
+        >
           {successMessage}
-        </output>
+        </div>
       )}
 
       {(isCreating || editingQuestion) && (

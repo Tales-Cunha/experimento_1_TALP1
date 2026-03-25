@@ -11,8 +11,6 @@ interface GenerateResponse {
 interface GeneratedFiles {
   zipBlob: Blob;
   zipName: string;
-  csvBlob: Blob;
-  csvName: string;
 }
 
 const MIN_COPIES = 1;
@@ -164,13 +162,10 @@ const ExamDetailPage = () => {
 
       const safeTitle = slugify(exam.title);
       const zipBlob = base64ToBlob(response.data.zipBase64, 'application/zip');
-      const csvBlob = new Blob([response.data.csv], { type: 'text/csv;charset=utf-8' });
-
+      
       setGeneratedFiles({
         zipBlob,
         zipName: `provas-${safeTitle}-${copies}-copias.zip`,
-        csvBlob,
-        csvName: `answer_key-${safeTitle}-${copies}-copias.csv`,
       });
     } catch (error: unknown) {
       const message = axios.isAxiosError(error)
@@ -369,15 +364,6 @@ const ExamDetailPage = () => {
             >
               <span className="file-icon" aria-hidden="true">📄</span>
               <span className="file-name">{generatedFiles.zipName}</span>
-              <span className="file-action">Baixar</span>
-            </button>
-            <button
-              type="button"
-              className="file-chip"
-              onClick={() => downloadBlob(generatedFiles.csvBlob, generatedFiles.csvName)}
-            >
-              <span className="file-icon" aria-hidden="true">📄</span>
-              <span className="file-name">{generatedFiles.csvName}</span>
               <span className="file-action">Baixar</span>
             </button>
           </div>
